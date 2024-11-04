@@ -39,22 +39,43 @@ Módulo interactivo que permite a los clientes personalizar y visualizar diferen
 - Smarty Templates
 
 ### 3. Sistema de Importación de Productos
-Herramienta para la importación y gestión masiva de productos en PrestaShop.
+Sistema integral para el procesamiento y validación de datos de productos, diseñado para mantener la consistencia en la importación de datos entre diferentes plataformas (Ambar y PrestaShop).
 
 #### Características Principales:
-- Procesamiento de archivos CSV/Excel
-- Mapeo flexible de columnas
-- Validación de datos
-- Gestión de características y categorías
-- Generación de archivos de importación para Ambar y PrestaShop
-- Interfaz de usuario intuitiva
+- Base de datos personalizada para almacenar y validar atributos de productos:
+ - Temporadas
+ - Categorías
+ - Tallas
+ - Marcas
+ - Gamas
+ - Productos
+- Procesamiento inteligente de archivos Excel:
+ - Mapeo flexible de columnas de entrada
+ - Validación automática contra la base de datos maestra
+ - Detección de nuevos valores no registrados
+- Generación automática de tres archivos de salida:
+ - Plantilla Ambar: Formato específico para importación en sistema Ambar
+ - PS_Product: Archivo adaptado para productos base en PrestaShop
+ - PS_Combi: Archivo para combinaciones de productos en PrestaShop
+- Interfaz de usuario para gestión de datos:
+ - Visualización de valores no coincidentes
+ - Opción de añadir nuevos valores a la base de datos maestra
+ - Prevención de duplicados en la importación
+ - Mapeo personalizado o predefinido de columnas
+
+#### Beneficios:
+- Mantiene la consistencia de datos entre sistemas
+- Reduce errores en la importación de productos
+- Automatiza la transformación de datos entre diferentes formatos
+- Facilita la detección y gestión de nuevos valores
+- Ahorra tiempo en el proceso de importación
 
 #### Tecnologías:
-- PHP
-- JavaScript (jQuery)
-- MySQL
-- Bootstrap
-- AJAX
+- PHP para el backend y procesamiento de datos
+- MySQL para la base de datos maestra
+- JavaScript (jQuery) para la interfaz interactiva
+- Bootstrap para el diseño responsive
+- AJAX para operaciones asíncronas
 
 ## 🛠️ Tecnologías Utilizadas
 
