@@ -1,0 +1,264 @@
+/* Estilos base para todo el cuerpo de la página */
+.body-configurador {
+    font-family: Arial, sans-serif;
+    /* Usa Arial como la fuente por defecto */
+    margin: 0;
+    /* Elimina los márgenes por defecto */
+    padding: 0;
+    /* Elimina los rellenos por defecto */
+    display: flex;
+    /* Usa flexbox para la disposición */
+    flex-direction: column;
+    /* Organiza los contenidos en una columna */
+    align-items: center;
+    /* Centra los elementos horizontalmente */
+    background: #f4f4f4;
+    /* Establece un color de fondo claro para toda la página */
+}
+
+/* Estilos para el contenedor principal */
+.container-configurador {
+    display: flex;
+    flex-direction: column;
+    /* Comienza con una disposición vertical */
+    justify-content: space-around;
+    /* Distribuye el espacio alrededor de los elementos */
+    align-items: center;
+    /* Alinea los elementos en el centro horizontalmente */
+    width: 100%;
+    /* Utiliza el 100% del ancho disponible */
+    max-width: 1200px;
+    /* Limita el ancho máximo a 1200px */
+    margin-top: 20px;
+    /* Margen superior para separar del contenido previo */
+    border-radius: 8px;
+    /* Redondea las esquinas del contenedor */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    /* Sombra para dar profundidad */
+    background: white;
+    /* Fondo blanco para el contenedor */
+}
+
+/* Estilos para los configuradores de modelo y componentes */
+.configurator {
+    padding: 20px;
+    /* Relleno interior para separar el contenido de los bordes */
+    gap: 20px;
+    /* Espacio entre los elementos flexibles */
+    width: 100%;
+    /* Aprovecha todo el ancho disponible */
+    display: flex;
+    flex-direction: column;
+    /* Elementos dispuestos en columna */
+}
+
+/* Estilos para cada selector dentro del configurador */
+.selector {
+    display: flex;
+    flex-direction: column;
+    /* Elementos dispuestos verticalmente */
+    align-items: flex-start;
+    /* Alineación al inicio del contenedor */
+}
+
+.selector label {
+    margin-bottom: 10px;
+    /* Margen inferior para la etiqueta */
+    font-weight: bold;
+    /* Texto en negrita */
+    color: #555;
+    /* Color oscuro para mejorar la legibilidad */
+}
+
+/* Estilos para los selectores de modelo y color */
+.color-selector,
+.model-selector {
+    display: flex;
+    gap: 5px;
+    /* Espacio entre los elementos */
+    flex-wrap: wrap;
+    /* Permite el salto de línea entre elementos */
+}
+
+
+/* Estilo para los elementos seleccionados */
+.color-square.selected,
+.model-square.selected {
+    border: 2px solid #FF0000;
+    /* Borde rojo para indicar selección */
+    box-shadow: 0 0 5px #FF0000;
+    /* Sombra roja alrededor del elemento seleccionado */
+}
+
+/* Estilos para la vista previa */
+.preview {
+    width: 100%;
+    /* Aprovecha todo el ancho disponible */
+    display: flex;
+    justify-content: center;
+    /* Centra el contenido horizontalmente */
+    align-items: center;
+    /* Centra el contenido verticalmente */
+    padding: 1px;
+    /* Relleno interior */
+}
+
+/* Media queries para ajustar la disposición en pantallas más grandes */
+@media (min-width: 992px) {
+            .color-square, .model-square {
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            margin: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+        }
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .row {
+                display: flex;
+                width: 100%;
+                flex-direction: row;
+            }
+            .configurator {
+                width: 35%; /* Reduce el ancho para darle más espacio al canvas */
+                order: 1;
+            }
+            .preview {
+                width: 100%; /* Aumenta el ancho para agrandar el canvas */
+                order: 2;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .color-name {
+                font-weight: bold;
+                font-size: 20px;
+                color: rgb(252, 2, 2);
+                background-color: #f8f9fa;
+                padding: 1px 1px;
+                border-radius: 4px;
+                box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1);
+                display: inline-block;
+            }
+            /* Estilos para los selectores de modelo y color */
+            .color-selector, .model-selector {
+                display: flex;
+                gap: 1px; /* Espacio entre los elementos */
+                flex-wrap: wrap; /* Permite el salto de línea entre elementos */
+            }
+            /* Agrandar iconos de las secciones */
+            .configurator img {
+                height: 50px; /* Ajusta este valor según necesites */
+                margin-right: 5px;
+            }
+
+            /* Aumentar el tamaño de fuente de los títulos para una mejor legibilidad en móviles */
+            .configurator label {
+                font-size: 25px; /* Ajusta este valor según necesites */
+            }
+            /* Aumentar el tamaño del texto de los encabezados de las tarjetas en dispositivos móviles */
+            .card-header {
+                font-size: 20px; /* Cambia este valor según tus necesidades */
+            }
+            
+        }
+
+#configImageCanvas {
+    width: 100%;
+    /* Asegura que el canvas use todo el espacio disponible de .preview */
+    /*height: auto;*/
+    /* Mantiene la proporción de altura basada en el ancho */
+    display: block;
+    margin: auto;
+}
+
+/* Ajustes específicos para pantallas pequeñas */
+@media (max-width: 767px) {
+    /* Estilos para cuadrados de modelo y color */
+    .color-square,
+    .model-square {
+        width: 50px;
+        /* Ancho fijo */
+        height: 50px;
+        /* Altura fija */
+        margin: 1px;
+        /* Margen */
+        border: 1px solid #000;
+        /* Borde sólido negro */
+        cursor: pointer;
+        /* Cursor en forma de puntero para indicar clickeable */
+        display: flex;
+        align-items: center;
+        /* Centra el contenido verticalmente */
+        justify-content: center;
+        /* Centra el contenido horizontalmente */
+        background-size: cover;
+        /* La imagen de fondo cubre todo el espacio disponible */
+        background-position: center;
+        /* La imagen de fondo centrada */
+    }
+    .preview canvas {
+        width: 100%; /* Asegura que el canvas use todo el espacio disponible */
+        height: 400px; /* Ajusta la altura para dispositivos móviles */
+    }
+    /* Agrandar iconos de las secciones */
+    .configurator img {
+        height: 10px; /* Ajusta este valor según necesites */
+    }
+
+    /* Aumentar el tamaño de fuente de los títulos para una mejor legibilidad en móviles */
+    .configurator label {
+        font-size: 25px; /* Ajusta este valor según necesites */
+    }
+
+    .color-name {
+    font-weight: bold;
+    font-size: 20px;
+    color: rgb(252, 2, 2);
+    background-color: #f8f9fa;
+    padding: 1px 1px;
+    border-radius: 4px;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1);
+    display: inline-block;
+    }
+}
+
+
+
+/* Agrandar iconos de las secciones */
+.configurator img {
+    height: 70px;
+    /* Ajusta este valor según necesites */
+    margin-right: 5px;
+}
+
+
+/* Aumentar el tamaño del texto de los encabezados de las tarjetas en dispositivos móviles */
+.card-header {
+    font-size: 25px;
+    /* Cambia este valor según tus necesidades */
+}
+
+.color-square {
+    border: 1px solid #ddd;
+}
+
+.selected {
+    border: 2px solid red;
+}
+
+
+/* Elimina el borde superior del primer elemento para evitar la línea sobre la primera sección */
+#rim:first-child {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
