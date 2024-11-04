@@ -1,59 +1,101 @@
-# Zambrana
+Portfolio de Proyectos MxZambrana
+🏍️ Sobre MxZambrana
+MxZambrana es una tienda especializada en motos de Cross y Enduro, así como en la venta de equipamiento, recambios y accesorios. Este repositorio contiene los diversos proyectos desarrollados para optimizar y automatizar los procesos de la tienda.
+📁 Proyectos Principales
+1. Sistema de Gestión de Stock
+Sistema automatizado para la sincronización y gestión de stock entre proveedores y PrestaShop.
+Características Principales:
 
-Este proyecto es una solución automatizada en Python para la sincronización y gestión de stock entre proveedores y una tienda online en PrestaShop. La herramienta realiza un proceso completo de descarga, análisis,
-comparación y actualización de datos de stock y disponibilidad, lo cual permite mantener actualizada la información en la tienda de manera eficiente.
+Descarga automática de archivos Excel desde FTP de proveedores
+Procesamiento y análisis de datos mediante pandas
+Sincronización bidireccional entre base de datos de stock y PrestaShop
+Sistema de etiquetado automático de productos
+Gestión automática de disponibilidad y fechas
+Generación y envío de informes por correo
 
-## Descripción
+Tecnologías:
 
-El programa sigue un flujo de trabajo automatizado para la actualización del stock y la disponibilidad de productos en PrestaShop, con los siguientes pasos principales:
+Python (pandas, PyMySQL, smtplib, logging)
+SQL (MySQL)
+FTP
 
-1. **Descarga de Excel desde FTP de Proveedores**:
-   - Accede al servidor FTP de los proveedores para descargar los archivos Excel con información de productos y stock actual.
+2. Configurador de Ruedas (Módulo PrestaShop)
+Módulo interactivo que permite a los clientes personalizar y visualizar diferentes combinaciones de ruedas para sus motos.
+Características Principales:
 
-2. **Lectura y Procesamiento de Datos**:
-   - Los archivos Excel descargados se leen y se convierten en **dataframes** (tablas de datos) que son luego procesados y cargados en una base de datos personalizada para almacenar temporalmente la información de stock y fecha de disponibilidad de los productos.
+Interfaz visual interactiva
+Personalización de componentes (aros, bujes, radios, tuercas)
+Previsualización en tiempo real
+Diseño responsive
+Soporte para múltiples marcas de motos
 
-3. **Conexión a Dos Bases de Datos**:
-   - El sistema conecta con dos bases de datos distintas:
-     - **Base de Datos de Stock**: Una base de datos creada específicamente para el proyecto, donde se almacenan todos los datos de referencias, tiempo de disponibilidad y stock de los proveedores.
-     - **Base de Datos de PrestaShop**: La base de datos del sistema de la tienda de Zambrana en PrestaShop, donde se actualiza la información del stock y la disponibilidad de productos en la tienda online.
+Tecnologías:
 
-4. **Comparación y Actualización en PrestaShop**:
-   - El programa compara las referencias de productos entre ambas bases de datos y, al encontrar coincidencias, aplica actualizaciones en PrestaShop, tales como:
-     - **Etiquetado de Productos**: Añade etiquetas para indicar si el producto tiene stock o no.
-     - **Fecha de Disponibilidad**: Actualiza la fecha de disponibilidad si está proporcionada.
-     - **Permisos de Pedido**: Activa o desactiva la opción de realizar pedidos según la disponibilidad.
-     - **Activación de Productos**: Activa o desactiva productos en función del stock.
-     - **Gestión de Atributos de Talla**: Desactiva atributos de talla cuando no hay disponibilidad en dicha talla.
+PHP (PrestaShop Module)
+JavaScript
+HTML5 Canvas
+CSS3
+Smarty Templates
 
-5. **Generación de Informe de Resumen**:
-   - El programa crea un informe que resume todas las acciones realizadas durante el proceso.
-   - Envía el informe por correo electrónico para llevar un registro de los cambios, permitiendo un control detallado de las actualizaciones realizadas en la base de datos de PrestaShop.
+3. Sistema de Importación de Productos
+Herramienta para la importación y gestión masiva de productos en PrestaShop.
+Características Principales:
 
-## Tecnologías Utilizadas
+Procesamiento de archivos CSV/Excel
+Mapeo flexible de columnas
+Validación de datos
+Gestión de características y categorías
+Generación de archivos de importación para Ambar y PrestaShop
+Interfaz de usuario intuitiva
 
-- **Python**: Lenguaje principal del proyecto.
-- **Pandas**: Para la manipulación y análisis de datos a través de dataframes.
-- **PyMySQL**: Librería para conectarse y operar con las bases de datos MySQL.
-- **smtplib**: Librería para el envío de correos electrónicos con informes de resumen.
-- **logging**: Librería para la gestión y creación de registros detallados de cada proceso.
-- **Bases de Datos**: SQL para la base de datos de stock y la integración con PrestaShop.
-- **FTP**: Protocolo utilizado para la descarga de archivos Excel desde los proveedores.
+Tecnologías:
 
-## Requisitos
+PHP
+JavaScript (jQuery)
+MySQL
+Bootstrap
+AJAX
 
-- Python 3.x
-- Librerías: `pandas`, `sqlalchemy`, `ftplib`, `smtplib`
-- Acceso a las bases de datos de stock y PrestaShop
-- Acceso FTP a los archivos de proveedores
+🛠️ Tecnologías Utilizadas
+Lenguajes de Programación
 
-## Uso
+Python
+PHP
+JavaScript
+SQL
 
-1. Configura el acceso a las bases de datos y el servidor FTP en el archivo de configuración.
-2. Ejecuta el script principal para iniciar el proceso de descarga, análisis y actualización.
-3. Revisa el informe que recibirás por correo para verificar los cambios aplicados.
+Frameworks y Bibliotecas
 
-## Autor
+PrestaShop
+Bootstrap
+jQuery
+Pandas
+PyMySQL
 
-Este proyecto fue desarrollado por OscarAdrian98 para la gestión automática y optimizada de stock en la tienda de Zambrana en PrestaShop.
+Bases de Datos
 
+MySQL
+SQL Server
+
+Herramientas
+
+FTP
+Git
+Visual Studio Code
+Ambar (Sistema de importación)
+
+📊 Resultados y Mejoras
+
+Automatización de procesos manuales de actualización de stock
+Reducción de errores en la gestión de inventario
+Mejora en la experiencia de usuario para la personalización de productos
+Optimización del proceso de importación de productos
+Sistema escalable y mantenible
+
+🔗 Contacto
+Para cualquier consulta relacionada con estos proyectos, puedes contactarme a través de:
+
+GitHub: @OscarAdrian98
+
+📝 Licencia
+Este proyecto es propiedad de MxZambrana y su uso está restringido.
