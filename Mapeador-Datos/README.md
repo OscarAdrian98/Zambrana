@@ -1,114 +1,61 @@
-📊 Proyecto: Procesador de Archivos Excel y Mapeador de Datos
-Descripción
-Este proyecto facilita el procesamiento de archivos Excel y CSV mediante una interfaz web interactiva y una API Flask. Permite mapear datos de los archivos a diferentes plantillas específicas y consultar información adicional en bases de datos como Ambar y Prestashop. El resultado final es un archivo enriquecido que puede ser descargado directamente desde la interfaz.
+# Mapeador de Datos
 
-📌 Funcionalidades Principales
-Subida y Procesamiento de Archivos:
+## Descripción General
 
-Los usuarios pueden subir archivos Excel (.xlsx, .xls) o CSV.
-Seleccionar una plantilla específica para mapear los datos (POLISPORT, FOX, ACERBIS, FXR, PROX).
-Mapeo Automático:
+Este proyecto es un procesador de archivos Excel, diseñado para automatizar la conversión y el mapeo de datos según diferentes plantillas especificadas. Su función principal es procesar archivos Excel, CSV y otros formatos compatibles, aplicando transformaciones de datos específicas para adaptarlos a los requerimientos de diferentes sistemas o bases de datos.
 
-Mapea las columnas del archivo subido a las columnas definidas en la plantilla seleccionada.
-Genera un archivo de salida con los datos mapeados.
-Enriquecimiento de Datos:
+## Características Principales
 
-Consulta bases de datos Ambar y Prestashop para obtener información adicional (precios, stock, EAN, categorías, etc.).
-Si hay referencias no encontradas en las bases de datos, genera un archivo separado con esas referencias.
-Descarga de Resultados:
+- **Interfaz Web**: Cuenta con una interfaz web para la carga y procesamiento de archivos.
+- **Múltiples Plantillas**: Soporta varias plantillas de mapeo, como Polisport, Fox, Acerbis, FXR, y Prox.
+- **Exportación Flexible**: Permite la exportación de datos procesados en formatos como Excel y ZIP, dependiendo del resultado del procesamiento.
 
-Si todo está correcto, se descarga un único archivo Excel.
-Si hay referencias no encontradas, se descarga un archivo ZIP con dos Excel:
-Referencias encontradas.
-Referencias no encontradas.
-Interfaz de Usuario Intuitiva:
+## Tecnologías Utilizadas
 
-Utiliza Bootstrap para el diseño responsive.
-Indicadores visuales para el estado de procesamiento (loading, mensajes de error y éxito).
-🗂️ Estructura del Proyecto
-bash
-Copiar código
-📁 Proyecto-automatizar/
-│
-├── 📄 index.php               # Frontend para subir archivos y seleccionar plantillas
-│
-├── 📁 servidor/
-│   └── 📄 servidor.py         # API Flask para procesar archivos y consultar bases de datos
-│
-└── 📁 procesar/
-    └── 📄 procesar_fichero.py # Lógica de mapeo y consulta a bases de datos
-🚀 Instalación y Ejecución
-1. Clonar el Repositorio
-bash
-Copiar código
-git clone https://github.com/OscarAdrian98/tu-repositorio.git
-cd tu-repositorio
-2. Instalar Dependencias
-Asegúrate de tener Python 3 instalado y ejecuta:
+- **HTML/CSS**: Para la estructura y diseño de la interfaz de usuario.
+- **JavaScript y jQuery**: Para la interactividad del lado del cliente y la gestión de eventos.
+- **Bootstrap**: Para el diseño responsivo y estilizado de la interfaz.
+- **Python con Flask**: Servidor backend que maneja la lógica de procesamiento de archivos y las interacciones con la base de datos.
+- **Pandas y Openpyxl**: Bibliotecas de Python utilizadas para el manejo y procesamiento de datos de Excel.
+- **MySQL y SQL Server**: Bases de datos para almacenar información relacionada con los productos y el mapeo de datos.
 
-bash
-Copiar código
+## Estructura del Proyecto
+
+El proyecto consta de varios componentes clave:
+- **`index.php`**: Archivo principal de la interfaz de usuario que permite la carga y procesamiento de archivos.
+- **`servidor.py`**: Script de Flask que expone la API para procesar archivos y realizar consultas a la base de datos.
+- **`procesar_fichero.py`**: Módulo de Python que maneja el mapeo de archivos Excel a las plantillas especificadas.
+- **`bd.py`**: Módulo de Python para la gestión de conexiones a las bases de datos MySQL y SQL Server.
+
+## Instalación
+
+1. Clona este repositorio en tu servidor local o remoto.
+2. Asegúrate de tener Python instalado, y luego instala las dependencias con:
 pip install -r requirements.txt
-3. Configurar el Servidor Flask
-En el archivo servidor.py, asegúrate de configurar correctamente las conexiones a las bases de datos Ambar y Prestashop.
 
-4. Ejecutar el Servidor Flask
-bash
-Copiar código
-cd servidor
+3. Configura las conexiones a las bases de datos editando los archivos de configuración correspondientes.
+4. Inicia el servidor Flask con:
 python servidor.py
-El servidor se ejecutará en http://localhost:5000.
+5. Accede a la interfaz web a través de tu navegador en `http://localhost` o la dirección configurada en tu servidor.
 
-5. Abrir la Interfaz Web
-Abre index.php en tu navegador o accede a través de un servidor local como XAMPP o WAMP.
+## Uso
 
-⚙️ Endpoints de la API
-GET /plantillas
-Obtiene la lista de plantillas disponibles para el mapeo.
+Para usar el procesador de archivos Excel:
+1. Navega a la interfaz web.
+2. Selecciona el archivo que deseas procesar.
+3. Elige la plantilla de mapeo adecuada según tus necesidades.
+4. Haz clic en "Procesar Archivo" y espera a que el sistema procese y descargue el resultado.
 
-Ejemplo de Respuesta:
+## Contribuciones
 
-json
-Copiar código
-{
-    "success": true,
-    "plantillas": ["POLISPORT", "FOX", "ACERBIS", "FXR", "PROX"]
-}
-POST /procesar
-Procesa el archivo subido según la plantilla seleccionada.
+Las contribuciones a este proyecto son bienvenidas. Si deseas mejorar el procesador de archivos Excel o agregar nuevas características, por favor considera hacer fork del repositorio y enviar un pull request.
 
-Parámetros:
-file: Archivo Excel o CSV.
-plantilla: Nombre de la plantilla (POLISPORT, FOX, etc.).
-Respuesta:
+## Licencia
 
-Archivo Excel procesado o un archivo ZIP si hay múltiples resultados.
-🛠️ Tecnologías Utilizadas
-Frontend
-HTML5 / CSS3
-Bootstrap 5
-JavaScript (jQuery)
-Backend
-Python (Flask)
-Pandas: Procesamiento y análisis de datos.
-Openpyxl: Manipulación de archivos Excel.
-Flask-CORS: Manejo de CORS para solicitudes entre dominios.
-Logging: Registro de eventos y errores.
-Bases de Datos
-SQL Server (Ambar)
-MySQL (Prestashop)
-📈 Beneficios del Proyecto
-Automatización de Procesos: Reduce el tiempo y los errores en el procesamiento de archivos Excel.
-Enriquecimiento de Datos: Combina información de múltiples fuentes para obtener datos más completos.
-Interfaz Intuitiva: Facilita el uso de la herramienta sin necesidad de conocimientos técnicos avanzados.
-📋 Requisitos del Sistema
-Python 3.x
-Servidor Web (Apache, Nginx, etc.)
-Bases de Datos (SQL Server y MySQL)
-🔗 Enlaces Relacionados
-Tienda Zambrana: https://mxzambrana.com/
-Repositorio Principal: GitHub - OscarAdrian98
-🤝 Contacto
-Para cualquier consulta o mejora relacionada con este proyecto, puedes contactarme en:
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE.md](LICENSE.md) para más detalles.
 
-GitHub: @OscarAdrian98
+## Contacto
+
+Para cualquier consulta técnica o colaboración, no dudes en contactarme:
+- GitHub: [@OscarAdrian98](https://github.com/OscarAdrian98)
+- LinkedIn: [Oscar Adrian](https://www.linkedin.com/in/oscar-adrian)
