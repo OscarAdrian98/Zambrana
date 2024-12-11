@@ -1,4 +1,3 @@
-
 # Proyecto: Gestión y Optimización de la Tienda Zambrana
 
 ## Descripción General
@@ -128,6 +127,29 @@ Sistema integral para el procesamiento y validación de datos de productos, dise
 - Bootstrap para el diseño responsive
 - AJAX para operaciones asíncronas
 
+### 4. Mapeador de Datos
+Una API diseñada para automatizar la conversión y el mapeo de datos a múltiples formatos, adaptándose a diferentes plantillas. Se conecta a dos servidores, uno en **PHP** y otro en **Python**, permitiendo el procesamiento eficiente de archivos Excel, CSV y otros formatos compatibles, facilitando la integración de datos con sistemas y bases de datos externas.
+
+#### Características Principales:
+- Interfaz web para la carga y procesamiento de archivos.
+- Soporte para múltiples plantillas de mapeo, incluyendo Polisport, Fox, Acerbis, FXR y Prox.
+- Exportación de datos procesados en formatos Excel y ZIP.
+- Conexión a dos servidores: uno en **PHP** para la gestión de la interfaz y otro en **Python (Flask)** para el procesamiento de datos.
+
+#### Tecnologías:
+- **HTML/CSS** para el diseño de la interfaz.
+- **JavaScript y jQuery** para la funcionalidad del lado del cliente.
+- **Bootstrap** para un diseño responsivo.
+- **PHP** para gestionar la interfaz y lógica de usuario.
+- **Python con Flask** como servidor backend para el procesamiento de datos.
+- **Pandas y Openpyxl** para el procesamiento de archivos Excel.
+- Integración con bases de datos **MySQL** y **SQL Server**.
+
+#### Beneficios:
+- Automatización del procesamiento y conversión de datos de productos.
+- Mejora en la eficiencia y reducción de errores en la manipulación de datos.
+- Facilita la sincronización de información entre diferentes plataformas y bases de datos.
+
 ## 🛠️ Tecnologías Utilizadas
 
 ### Lenguajes de Programación
@@ -142,6 +164,7 @@ Sistema integral para el procesamiento y validación de datos de productos, dise
 - jQuery
 - Pandas
 - PyMySQL
+- Flask
 
 ### Bases de Datos
 - MySQL
@@ -165,4 +188,3 @@ Sistema integral para el procesamiento y validación de datos de productos, dise
 Para cualquier consulta relacionada con estos proyectos, puedes contactarme a través de:
 - GitHub: [@OscarAdrian98](https://github.com/OscarAdrian98)
 - LinkedIn: [Oscar Adrian](https://www.linkedin.com/in/oscar-adrian)
-
