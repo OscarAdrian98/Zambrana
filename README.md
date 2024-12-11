@@ -49,10 +49,6 @@ Mi trabajo en Zambrana se centra en la automatización, mantenimiento de product
 
 El objetivo de este proyecto es optimizar la gestión de inventario y la actualización de productos en la tienda de manera eficiente, reduciendo los tiempos de carga y minimizando errores en la información mostrada al cliente. La implementación de estos procesos garantiza que el catálogo esté siempre alineado con la disponibilidad real de los productos, mejorando así la experiencia del cliente en el sitio.
 
-## Contacto
-
-Para más información sobre el proyecto o cualquier consulta relacionada, no dudes en contactarme a través de GitHub en OscarAdrian98.
-=======
 # Portfolio de Proyectos MxZambrana
 
 ## 🏍️ Sobre MxZambrana
