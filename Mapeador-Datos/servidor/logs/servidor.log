@@ -1,0 +1,27 @@
+2024-11-25 11:47:12,888 - INFO - Directorio de uploads creado: e:\TRABAJO-OSCAR\Programas\Script Descripciones\Proyecto-automatizar\servidor\uploads
+2024-11-25 11:47:12,889 - INFO - Iniciando servidor Flask en puerto 5000
+2024-11-25 11:47:12,914 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.25:5000
+2024-11-25 11:47:12,914 - INFO - [33mPress CTRL+C to quit[0m
+2024-11-25 11:51:15,822 - INFO - Iniciando servidor Flask en puerto 5000
+2024-11-25 11:51:15,839 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.25:5000
+2024-11-25 11:51:15,840 - INFO - [33mPress CTRL+C to quit[0m
+2024-11-25 11:57:59,717 - INFO - Iniciando servidor Flask en puerto 5000
+2024-11-25 11:57:59,734 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.25:5000
+2024-11-25 11:57:59,734 - INFO - [33mPress CTRL+C to quit[0m
+2024-11-25 11:58:20,576 - INFO - 127.0.0.1 - - [25/Nov/2024 11:58:20] "[33mGET / HTTP/1.1[0m" 404 -
+2024-11-25 11:58:20,910 - INFO - 127.0.0.1 - - [25/Nov/2024 11:58:20] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2024-11-25 12:31:34,995 - INFO - Iniciando procesamiento de archivo
+2024-11-25 12:31:35,001 - INFO - Plantilla seleccionada: POLISPORT
+2024-11-25 12:31:35,003 - INFO - Guardando archivo en: E:\TRABAJO-OSCAR\Programas\Proyecto-automatizar\servidor\uploads\prueba-polisport.xlsx
+2024-11-25 12:31:35,039 - INFO - Iniciando mapeo de excel a plantilla
+2024-11-25 12:31:35,797 - INFO - Archivo resultado generado en: E:\TRABAJO-OSCAR\Programas\Proyecto-automatizar\servidor\uploads\datos_finales_con_ambar.xlsx
+2024-11-25 12:31:35,797 - INFO - 127.0.0.1 - - [25/Nov/2024 12:31:35] "POST /procesar HTTP/1.1" 200 -
