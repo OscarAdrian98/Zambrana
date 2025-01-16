@@ -150,6 +150,24 @@ Una API diseñada para automatizar la conversión y el mapeo de datos a múltipl
 - Mejora en la eficiencia y reducción de errores en la manipulación de datos.
 - Facilita la sincronización de información entre diferentes plataformas y bases de datos.
 
+### 5. **Buscador Ref Competencia**
+Herramienta web diseñada para comparar precios y referencias de productos entre **MxZambrana** y sus competidores en tiempo real. Permite a los usuarios buscar una referencia específica y visualizar los resultados de diferentes plataformas de venta.
+
+#### Características Principales:
+- Búsqueda eficiente de referencias utilizando una interfaz web sencilla y amigable.
+- Comparación automática de precios, descuentos y referencias entre plataformas como Greenland, Motocard, MX Zambrana, entre otros.
+- Resalta el proveedor con el precio más competitivo.
+- Generación de informes descargables en formato Excel directamente desde la interfaz.
+
+#### Tecnologías:
+- **Frontend**: HTML, CSS (Bootstrap), JavaScript (jQuery).
+- **Backend**: Python (FastAPI), Selenium para scraping, y servicios integrados con EventSource para actualización en tiempo real.
+
+#### Beneficios:
+- Facilita la comparación de precios y referencias en múltiples plataformas.
+- Mejora la capacidad de MxZambrana para identificar oportunidades competitivas en el mercado.
+- Reduce el tiempo necesario para obtener datos relevantes, optimizando la toma de decisiones estratégicas.
+
 ## 🛠️ Tecnologías Utilizadas
 
 ### Lenguajes de Programación
