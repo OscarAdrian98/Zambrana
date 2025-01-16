@@ -1,0 +1,10 @@
+error_screenshot.png
+productos.xlsx
+~$productos.xlsx
+resultados.xlsx
+requirements.txt
+logs/start_uvicorn.log
+Servicio.txt
+PythonScrapingService.wrapper.log
+PythonScrapingService.err.log
+PythonScrapingService.out.log

@@ -1,0 +1,7 @@
+<service>
+    <id>PythonScraping</id>
+    <name>Python Scraping Service</name>
+    <description>Servicio que ejecuta el servidor de FastAPI.</description>
+    <executable>\python.exe</executable> // Ruta del ejecutable de Python
+    <arguments>\scraping_ref\start_uvicorn.py</arguments> // Ruta del script de Python
+</service>
