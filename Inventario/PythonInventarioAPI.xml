@@ -1,0 +1,8 @@
+<service>
+    <id>PythonInventarioAPI</id>
+    <name>Python Inventario API</name>
+    <description>Servicio que ejecuta el servidor de FastAPI para reportes de inventario.</description>
+    <executable>C:\Users\Zambrana\AppData\Local\Programs\Python\Python313\python.exe</executable>
+    <arguments>D:\www\oscar\Inventario\start_uvicorn.py</arguments>
+    <logmode>roll</logmode>
+</service>
