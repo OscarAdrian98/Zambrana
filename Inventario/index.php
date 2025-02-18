@@ -1,3 +1,64 @@
+<?php
+// 🔹 Configurar la sesión ANTES de iniciarla
+ini_set("session.cookie_lifetime", 0);  // La sesión dura hasta que el navegador se cierra
+ini_set("session.gc_maxlifetime", 0);   // Evita que la sesión tenga un tiempo de expiración fijo
+
+session_start();
+
+// 🔹 Evitar caché del navegador
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// 🔹 Cerrar sesión si se solicita (botón de logout)
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header("Location: index.php");
+    exit();
+}
+
+// 🔹 Verificar autenticación
+if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !== true) {
+    $error = "";
+
+    // Si el usuario envía la clave
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['clave'])) {
+        if ($_POST['clave'] === "Clave") { // Clave de acceso
+            $_SESSION['acceso_autorizado'] = true;
+            header("Location: index.php"); // Recargar la página autenticada
+            exit();
+        } else {
+            $error = "⚠ Clave incorrecta, inténtelo de nuevo.";
+        }
+    }
+
+    // 🔹 Mostrar formulario de acceso si no está autenticado
+    echo '<!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Acceso Restringido</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+    <div class="container mt-5">
+        <h2 class="text-center">🔒 Acceso Restringido</h2>
+        <form method="POST" class="w-50 mx-auto">
+            <div class="mb-3">
+                <label class="form-label">Clave de acceso:</label>
+                <input type="password" name="clave" class="form-control" required>
+            </div>';
+    if ($error) {
+        echo '<div class="alert alert-danger text-center">' . $error . '</div>';
+    }
+    echo '<button type="submit" class="btn btn-primary w-100">Ingresar</button>
+        </form>
+    </div>
+    </body>
+    </html>';
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -73,7 +134,8 @@
     </style>
 </head>
 <body>
-<div class="mt-2 container">
+<div class="container mt-2">
+    <button class="btn btn-danger logout-btn" onclick="window.location.href='index.php?logout=true'">Cerrar sesión</button>
     <h1 class="text-center">Reportes de Inventario</h1>
 
     <!-- Pestañas -->
