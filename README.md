@@ -168,6 +168,30 @@ Herramienta web diseñada para comparar precios y referencias de productos entre
 - Mejora la capacidad de MxZambrana para identificar oportunidades competitivas en el mercado.
 - Reduce el tiempo necesario para obtener datos relevantes, optimizando la toma de decisiones estratégicas.
 
+### 6. Sistema de Reportes de Inventario
+Sistema de gestión y control del inventario que permite la generación de reportes detallados sobre ventas, compras, vencimientos y stock actual en la tienda. Este sistema está diseñado para proporcionar información en tiempo real y facilitar la toma de decisiones estratégicas basadas en datos precisos.
+
+#### Características Principales:
+- **Consulta en tiempo real** de reportes de ventas, compras, vencimientos y stock.
+- **Filtros avanzados** por fecha, familia de productos y proveedores.
+- **Descarga de reportes en formato Excel** para análisis y seguimiento.
+- **Interfaz web responsiva** con Bootstrap y jQuery.
+- **Backend en FastAPI** para una gestión eficiente de la información.
+- **Integración con bases de datos SQL Server y MySQL**.
+
+#### Tecnologías:
+- **Frontend:** PHP, HTML, CSS, Bootstrap, jQuery.
+- **Backend:** FastAPI (Python), SQL Server, MySQL.
+- **Bibliotecas:** Pandas, Openpyxl, Logging, Uvicorn.
+- **Servicios:** API REST con CORS habilitado.
+
+#### Beneficios:
+- **Automatización de reportes** sin necesidad de intervención manual.
+- **Mayor precisión** en el control de stock y reportes de ventas/compras.
+- **Acceso en tiempo real** a datos actualizados para una mejor toma de decisiones.
+- **Optimización del inventario** al analizar tendencias de ventas y compras.
+- **Reducción de errores** en la gestión de datos y control del almacén.
+
 ## 🛠️ Tecnologías Utilizadas
 
 ### Lenguajes de Programación
