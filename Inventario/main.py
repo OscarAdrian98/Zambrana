@@ -185,27 +185,26 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
         resultados = ejecutar_consulta(query, (fecha_desde, fecha_hasta))
 
         if not resultados:
-            logging.warning(" No hay datos para mostrar.")
+            logging.warning("No hay datos para mostrar.")
             return []
 
         ventas_lista = []
-        total_ingreso_sin_iva = 0
+        total_ingreso_venta = 0
         total_beneficio_sin_iva = 0
-        total_beneficio_con_iva = 0  # Nueva suma total
+        total_beneficio_con_iva = 0
 
         for row in resultados:
-            ingreso_sin_iva = round(float(row[5]), 2) if row[5] is not None else 0.00
+            ingreso_venta = round(float(row[4]), 2) if row[4] is not None else 0.00
             beneficio_sin_iva = round(float(row[7]), 2) if row[7] is not None else 0.00
             beneficio_con_iva = round(float(row[8]), 2) if row[8] is not None else 0.00
-            beneficio_sin_iva_pct = round((beneficio_sin_iva / ingreso_sin_iva) * 100, 2) if ingreso_sin_iva > 0 else 0.00
+            beneficio_sin_iva_pct = round((beneficio_sin_iva / ingreso_venta) * 100, 2) if ingreso_venta > 0 else 0.00
 
             fila = {
                 "refProducto": row[0] if row[0] else "",
                 "nombreProducto": row[1] if row[1] else "Sin nombre",
                 "cantidad_vendida": int(row[2]) if row[2] else 0,
                 "fecha_venta": row[3].strftime("%d-%m-%Y") if row[3] else "N/A",
-                "ingreso_venta": f"{ingreso_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-                "ingreso_sin_iva": f"{ingreso_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+                "ingreso_venta": f"{ingreso_venta:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 "costo_venta": f"{round(float(row[6]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[6] else "0,00",
                 "beneficio_sin_iva": f"{beneficio_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 "beneficio_sin_iva_%": f"{beneficio_sin_iva_pct:,.2f}".replace(".", ","),
@@ -215,15 +214,16 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
                 "recargo": f"{round(float(row[11]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[11] else "0,00",
                 "precioE": f"{round(float(row[12]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[12] else "0,00",
             }
+
             ventas_lista.append(fila)
 
             # Acumular totales
-            total_ingreso_sin_iva += ingreso_sin_iva
+            total_ingreso_venta += ingreso_venta
             total_beneficio_sin_iva += beneficio_sin_iva
-            total_beneficio_con_iva += beneficio_con_iva  # Acumular beneficio con IVA
+            total_beneficio_con_iva += beneficio_con_iva
 
         # Calcular el porcentaje total correctamente
-        total_beneficio_sin_iva_pct = round((total_beneficio_sin_iva / total_ingreso_sin_iva) * 100, 2) if total_ingreso_sin_iva > 0 else 0.00
+        total_beneficio_sin_iva_pct = round((total_beneficio_sin_iva / total_ingreso_venta) * 100, 2) if total_ingreso_venta > 0 else 0.00
 
         # Agregar stock actual
         stock_data = obtener_stock_actual()
@@ -239,8 +239,7 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
                 "nombreProducto": "",
                 "cantidad_vendida": sum(int(item["cantidad_vendida"]) for item in ventas_lista),
                 "fecha_venta": "",
-                "ingreso_venta": f"{total_ingreso_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-                "ingreso_sin_iva": f"{total_ingreso_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+                "ingreso_venta": f"{total_ingreso_venta:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 "costo_venta": f"{sum(float(item['costo_venta'].replace('.', '').replace(',', '.')) for item in ventas_lista):,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 "beneficio_sin_iva": f"{total_beneficio_sin_iva:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
                 "beneficio_sin_iva_%": f"{total_beneficio_sin_iva_pct:,.2f}".replace(".", ","),
@@ -260,6 +259,8 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
 
 # Función para agrupar ventas globales
 def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
+    import pandas as pd
+
     df = pd.DataFrame(ventas_lista)
 
     # Verificar que el DataFrame no esté vacío antes de agrupar
@@ -267,26 +268,24 @@ def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
         return []
 
     # Convertir columnas a float antes de agrupar
-    columnas_a_convertir = ["ingreso_sin_iva", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva", "ingreso_venta"]
+    columnas_a_convertir = ["ingreso_venta", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva"]
     for col in columnas_a_convertir:
-        df[col] = df[col].astype(str).str.replace(".", "").str.replace(",", ".").astype(float)
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False).astype(float)
 
+    # Agrupar por refProducto y nombreProducto
     df_grouped = df.groupby(["refProducto", "nombreProducto"]).agg({
         "cantidad_vendida": "sum",
         "fecha_venta": "max",
         "ingreso_venta": "sum",
-        "ingreso_sin_iva": "sum",
         "costo_venta": "sum",
         "beneficio_sin_iva": "sum",
-        "beneficio_con_iva": "sum"
+        "beneficio_con_iva": "sum",
     }).reset_index()
 
-    # Calcular beneficio total
-    df_grouped["beneficio"] = round(df_grouped["ingreso_sin_iva"] - df_grouped["costo_venta"], 2)
-
-    # Calcular beneficio sin IVA %
+    # Calcular el porcentaje de beneficio sin IVA
     df_grouped["beneficio_sin_iva_%"] = df_grouped.apply(
-        lambda row: round((row["beneficio_sin_iva"] / row["ingreso_sin_iva"]) * 100, 2) if row["ingreso_sin_iva"] > 0 else 0.00,
+        lambda row: round((row["beneficio_sin_iva"] / row["ingreso_venta"]) * 100, 2) if row["ingreso_venta"] > 0 else 0.00,
         axis=1
     )
 
@@ -298,22 +297,20 @@ def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
     stock_dict = {s["refProducto"]: s["stock_actual"] for s in stock_data}
     df_grouped["stock_actual"] = df_grouped["refProducto"].map(stock_dict).fillna(0).astype(int)
 
-    # Convertir números a formato correcto (miles con punto, decimales con coma)
-    for col in ["ingreso_venta", "ingreso_sin_iva", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva", "beneficio", "beneficio_sin_iva_%"]:
+    # Formatear números con miles separados por puntos y decimales con comas
+    for col in ["ingreso_venta", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva", "beneficio_sin_iva_%"]:
         df_grouped[col] = df_grouped[col].apply(lambda x: f"{x:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
 
-    # Agregar fila de totales con formato correcto
+    # Agregar fila de totales
     total_fila = {
         "refProducto": "TOTAL",
         "nombreProducto": "",
         "cantidad_vendida": int(df_grouped["cantidad_vendida"].sum()),
         "fecha_venta": "",
         "ingreso_venta": f"{df_grouped['ingreso_venta'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "ingreso_sin_iva": f"{df_grouped['ingreso_sin_iva'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
         "costo_venta": f"{df_grouped['costo_venta'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
         "beneficio_sin_iva": f"{df_grouped['beneficio_sin_iva'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
         "beneficio_con_iva": f"{df_grouped['beneficio_con_iva'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "beneficio": f"{df_grouped['beneficio'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
         "beneficio_sin_iva_%": f"{total_beneficio_sin_iva_pct:,.2f}".replace(".", ","),
         "stock_actual": ""
     }
@@ -450,7 +447,6 @@ def obtener_vencimientos(fecha_desde, fecha_hasta):
             fpv.Vencimiento AS numeroVencimientos,
             ec.ImporteTotalE AS totalFactura,
             ec.ImportePagadoE AS totalPagado,
-            ec.Pagado AS estaPagado,
             p.Proveedor AS refProveedor,
             p.Nombre AS nombreProveedor,
             b.Banco AS refBanco,
@@ -466,11 +462,11 @@ def obtener_vencimientos(fecha_desde, fecha_hasta):
             AND ec.FechaVencimiento BETWEEN CONVERT(DATE, ?) AND CONVERT(DATE, ?)
         """
 
-        logging.info(f"Ejecutando consulta SQL VENCIMIENTOS (por FechaVencimiento) desde {fecha_desde} hasta {fecha_hasta}")
+        logging.info(f"Ejecutando consulta SQL VENCIMIENTOS desde {fecha_desde} hasta {fecha_hasta}")
         resultados = ejecutar_consulta(query, (fecha_desde, fecha_hasta))
 
         if not resultados:
-            logging.warning(" No hay vencimientos registrados en este período.")
+            logging.warning("No hay vencimientos registrados en este período.")
             return []
 
         logging.info(f"Vencimientos obtenidos: {len(resultados)} filas")
@@ -481,36 +477,39 @@ def obtener_vencimientos(fecha_desde, fecha_hasta):
 
         for row in resultados:
             try:
-                logging.info(f"Procesando fila: {repr(row)}")
+                total_factura_val = float(row[7]) if row[7] is not None else 0.0
+                total_pagado_val = float(row[8]) if row[8] is not None else 0.0
 
-                # Convertir valores y formatear datos correctamente
+                # Calcular si está pagado (Si la diferencia es 0 se considera pagado)
+                esta_pagado = "Sí" if abs(total_factura_val - total_pagado_val) < 0.01 else "No"
+
                 fila = {
-                    "refFactura": row[0] if row[0] else "",
-                    "numFacturaProveedor": row[1] if row[1] else "",
+                    "refFactura": row[0] or "",
+                    "numFacturaProveedor": row[1] or "",
                     "fechaFactura": row[2].strftime("%d-%m-%Y") if row[2] else "N/A",
                     "fechaVencimiento": row[3].strftime("%d-%m-%Y") if row[3] else "N/A",
-                    "refFormaPago": row[4] if row[4] else "",
+                    "refFormaPago": row[4] or "",
                     "diasGiroPago": int(row[5]) if row[5] is not None else 0,
                     "numeroVencimientos": int(row[6]) if row[6] is not None else 0,
-                    "totalFactura": "{:,.2f}".format(float(row[7]) if isinstance(row[7], Decimal) else 0.0).replace(",", "X").replace(".", ",").replace("X", "."),
-                    "totalPagado": "{:,.2f}".format(float(row[8]) if isinstance(row[8], Decimal) else 0.0).replace(",", "X").replace(".", ",").replace("X", "."),
-                    "estaPagado": "Sí" if row[9] else "No",
-                    "refProveedor": row[10] if row[10] else "",
-                    "nombreProveedor": row[11] if row[11] else "",
-                    "refBanco": row[12] if row[12] else "",
-                    "nombreBanco": row[13] if row[13] else ""
+                    "totalFactura": "{:,.2f}".format(total_factura_val).replace(",", "X").replace(".", ",").replace("X", "."),
+                    "totalPagado": "{:,.2f}".format(total_pagado_val).replace(",", "X").replace(".", ",").replace("X", "."),
+                    "estaPagado": esta_pagado,
+                    "refProveedor": row[9] or "",
+                    "nombreProveedor": row[10] or "",
+                    "refBanco": row[11] or "",
+                    "nombreBanco": row[12] or ""
                 }
 
                 vencimientos_lista.append(fila)
 
                 # Acumular totales
-                total_factura += float(row[7]) if row[7] is not None else 0.0
-                total_pagado += float(row[8]) if row[8] is not None else 0.0
+                total_factura += total_factura_val
+                total_pagado += total_pagado_val
 
             except Exception as e:
-                logging.error(f"Error al procesar fila de vencimientos: {repr(row)} - {str(e)}")
+                logging.error(f"Error al procesar fila: {repr(row)} - {str(e)}")
 
-        # Agregar fila de totales formateada correctamente
+        # Agregar fila de totales
         fila_total = {
             "refFactura": "TOTAL",
             "numFacturaProveedor": "",
