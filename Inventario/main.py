@@ -46,7 +46,8 @@ async def get_data(
             if not fecha_desde or not fecha_hasta:
                 logging.error("Error: Faltan fechas en la consulta de ventas.")
                 raise HTTPException(status_code=400, detail="Las fechas son obligatorias para este reporte.")
-            datos = obtener_ventas(fecha_desde, fecha_hasta, ventas)
+            
+            datos = obtener_ventas(fecha_desde, fecha_hasta, ventas, familia, subfamilia, proveedor)
 
         elif tipo in ["compras", "vencimientos"]:
             if not fecha_desde or not fecha_hasta:
@@ -120,7 +121,7 @@ async def descargar_excel(
         else:
             if not fecha_desde or not fecha_hasta:
                 raise HTTPException(status_code=400, detail="Las fechas son obligatorias para este reporte.")
-            datos = obtener_ventas(fecha_desde, fecha_hasta, ventas) if tipo == "ventas" else obtener_datos(tipo, fecha_desde, fecha_hasta)
+            datos = obtener_ventas(fecha_desde, fecha_hasta, ventas, familia, subfamilia, proveedor) if tipo == "ventas" else obtener_datos(tipo, fecha_desde, fecha_hasta)
 
         # Convertir datos a DataFrame
         df = pd.DataFrame(datos)
@@ -158,7 +159,7 @@ def obtener_datos(tipo, fecha_desde, fecha_hasta):
         raise HTTPException(status_code=400, detail="Tipo de reporte no válido.")
 
 # Función para obtener ventas (global o individual)
-def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
+def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subfamilia=None, proveedor=None):
     try:
         query = """
         SELECT 
@@ -174,15 +175,33 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
             fvl.Dcto AS descuento,
             fvl.Iva AS iva,
             fvl.Recargo AS recargo,
-            fvl.PrecioE AS precioE
+            fvl.PrecioE AS precioE,
+            a.Familia AS familia,
+            a.SubFamilia AS subfamilia,
+            a.Proveedor AS proveedor
         FROM FacturasVentaLin fvl
         INNER JOIN Artículos a ON fvl.[Artículo] = a.[Artículo]
         WHERE fvl.FechaLin BETWEEN CONVERT(DATE, ?) AND CONVERT(DATE, ?)
         AND fvl.[Almacén] = 1
         """
 
-        logging.info(f"Ejecutando consulta SQL desde {fecha_desde} hasta {fecha_hasta}")
-        resultados = ejecutar_consulta(query, (fecha_desde, fecha_hasta))
+        parametros = [fecha_desde, fecha_hasta]
+
+        # Agregar filtros opcionales
+        if familia and familia.strip():
+            query += " AND a.Familia = ?"
+            parametros.append(familia.strip())
+
+        if subfamilia and subfamilia.strip():
+            query += " AND a.SubFamilia = ?"
+            parametros.append(subfamilia.strip())
+
+        if proveedor and proveedor.strip():
+            query += " AND a.Proveedor = ?"
+            parametros.append(proveedor.strip())
+
+        logging.info(f"Ejecutando consulta SQL desde {fecha_desde} hasta {fecha_hasta} con filtros: {parametros}")
+        resultados = ejecutar_consulta(query, tuple(parametros))
 
         if not resultados:
             logging.warning("No hay datos para mostrar.")
@@ -213,6 +232,9 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
                 "iva": f"{round(float(row[10]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[10] else "0,00",
                 "recargo": f"{round(float(row[11]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[11] else "0,00",
                 "precioE": f"{round(float(row[12]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[12] else "0,00",
+                "familia": row[13] if row[13] else "",
+                "subfamilia": row[14] if row[14] else "",
+                "proveedor": row[15] if row[15] else ""
             }
 
             ventas_lista.append(fila)
@@ -248,6 +270,9 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global"):
                 "iva": "",
                 "recargo": "",
                 "precioE": "",
+                "familia": "",
+                "subfamilia": "",
+                "proveedor": "",
                 "stock_actual": "",
             }
             ventas_lista.append(total_fila)
@@ -273,8 +298,8 @@ def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
         if col in df.columns:
             df[col] = df[col].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False).astype(float)
 
-    # Agrupar por refProducto y nombreProducto
-    df_grouped = df.groupby(["refProducto", "nombreProducto"]).agg({
+    # 🔹 Agrupar por refProducto, nombreProducto, Familia, SubFamilia y Proveedor
+    df_grouped = df.groupby(["refProducto", "nombreProducto", "familia", "subfamilia", "proveedor"]).agg({
         "cantidad_vendida": "sum",
         "fecha_venta": "max",
         "ingreso_venta": "sum",
@@ -301,10 +326,13 @@ def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
     for col in ["ingreso_venta", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva", "beneficio_sin_iva_%"]:
         df_grouped[col] = df_grouped[col].apply(lambda x: f"{x:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
 
-    # Agregar fila de totales
+    # 🔹 Agregar fila de totales
     total_fila = {
         "refProducto": "TOTAL",
         "nombreProducto": "",
+        "familia": "",
+        "subfamilia": "",
+        "proveedor": "",
         "cantidad_vendida": int(df_grouped["cantidad_vendida"].sum()),
         "fecha_venta": "",
         "ingreso_venta": f"{df_grouped['ingreso_venta'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
