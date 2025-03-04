@@ -23,7 +23,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
 
     // Si el usuario envía la clave
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['clave'])) {
-        if ($_POST['clave'] === "Clave") { // Clave de acceso
+        if ($_POST['clave'] === "000") { // Clave de acceso
             $_SESSION['acceso_autorizado'] = true;
             header("Location: index.php"); // Recargar la página autenticada
             exit();
@@ -42,7 +42,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
     </head>
     <body>
     <div class="container mt-5">
-        <h2 class="text-center">🔒 Acceso Restringido</h2>
+        <h2 class="text-center" style= "margin-bottom: 25px;">🔒 Acceso Restringido</h2>
         <form method="POST" class="w-50 mx-auto">
             <div class="mb-3">
                 <label class="form-label">Clave de acceso:</label>
@@ -150,7 +150,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
         <!-- Ventas -->
         <div id="ventas" class="tab-pane fade show active">
             <h3 class="mt-4">Ventas</h3>
-            
+
             <div class="row">
                 <div class="col-md-3">
                     <label for="tipoVentas" class="form-label">Tipo de Reporte:</label>
@@ -169,6 +169,30 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="cargarDatos('ventas')">Generar Reporte</button>
+                </div>
+            </div>
+
+            <!-- 🔹 NUEVOS FILTROS: Familia, SubFamilia y Proveedor -->
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <label for="familiaVentas" class="form-label">Familia:</label>
+                    <select id="familiaVentas" class="form-control" onchange="cargarSubfamilias('ventas'); actualizarDescripcion('familiaVentas', 'descFamiliaVentas')">
+                        <option value="">Todas</option>
+                    </select>
+                    <input type="text" id="descFamiliaVentas" class="form-control mt-1" placeholder="Descripción" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label for="subfamiliaVentas" class="form-label">SubFamilia:</label>
+                    <select id="subfamiliaVentas" class="form-control">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="proveedorVentas" class="form-label">Proveedor:</label>
+                    <select id="proveedorVentas" class="form-control" onchange="actualizarDescripcion('proveedorVentas', 'descProveedorVentas')">
+                        <option value="">Todos</option>
+                    </select>
+                    <input type="text" id="descProveedorVentas" class="form-control mt-1" placeholder="Descripción" readonly>
                 </div>
             </div>
 
@@ -234,7 +258,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
                 <!-- Filtro Familia -->
                 <div class="col-md-3">
                     <label for="familiaStock" class="form-label">Familia:</label>
-                    <select id="familiaStock" class="form-control" onchange="cargarSubfamilias(); actualizarDescripcion('familiaStock', 'descFamilia')">
+                    <select id="familiaStock" class="form-control" onchange="cargarSubfamilias('stock'); actualizarDescripcion('familiaStock', 'descFamilia')">
                         <option value="">Todas</option>
                     </select>
                     <input type="text" id="descFamilia" class="form-control mt-1" placeholder="Descripción" readonly>
@@ -296,6 +320,16 @@ function cargarDatos(tipo) {
         if (tipo === "ventas") {
             let ventasTipo = document.getElementById("tipoVentas").value;
             url += `&ventas=${ventasTipo}`;
+
+            // 🔹 Obtener los valores de los nuevos filtros de ventas
+            let familia = document.getElementById("familiaVentas").value;
+            let subfamilia = document.getElementById("subfamiliaVentas").value;
+            let proveedor = document.getElementById("proveedorVentas").value;
+
+            // 🔹 Agregar filtros a la URL solo si tienen valor
+            if (familia && familia !== "Todas") url += `&familia=${encodeURIComponent(familia)}`;
+            if (subfamilia && subfamilia !== "Todas") url += `&subfamilia=${encodeURIComponent(subfamilia)}`;
+            if (proveedor && proveedor !== "Todos") url += `&proveedor=${encodeURIComponent(proveedor)}`;
         }
     } else if (tipo === "stock") {
         // 🔹 Obtener los valores de los filtros de stock
@@ -360,6 +394,16 @@ function descargarReporte(tipo) {
         if (tipo === "ventas") {
             let ventasTipo = document.getElementById("tipoVentas").value;
             url += `&ventas=${ventasTipo}`; // 🔹 Aseguramos que se envía el tipo de ventas
+
+            // 🔹 Obtener los valores de los nuevos filtros de ventas
+            let familia = document.getElementById("familiaVentas").value;
+            let subfamilia = document.getElementById("subfamiliaVentas").value;
+            let proveedor = document.getElementById("proveedorVentas").value;
+
+            // 🔹 Agregar filtros a la URL solo si tienen valor
+            if (familia && familia !== "Todas") url += `&familia=${encodeURIComponent(familia)}`;
+            if (subfamilia && subfamilia !== "Todas") url += `&subfamilia=${encodeURIComponent(subfamilia)}`;
+            if (proveedor && proveedor !== "Todos") url += `&proveedor=${encodeURIComponent(proveedor)}`;
         }
     } else if (tipo === "stock") {
         let familia = document.getElementById("familiaStock").value;
@@ -375,34 +419,48 @@ function descargarReporte(tipo) {
     window.location.href = url; // 🔹 Descarga del archivo
 }
 
-// 🔹 Cargar opciones de Familias, SubFamilias y Proveedores dinámicamente
-let descripcionesFamilias = {};
-let descripcionesProveedores = {};
-
 function cargarFiltrosStock() {
     $.getJSON("http://192.168.1.201:5002/get_filtros_stock", function(data) {
-        let familiaSelect = $("#familiaStock");
-        let proveedorSelect = $("#proveedorStock");
+        let familiaStock = $("#familiaStock");
+        let proveedorStock = $("#proveedorStock");
+        let familiaVentas = $("#familiaVentas");
+        let proveedorVentas = $("#proveedorVentas");
 
-        familiaSelect.html('<option value="" data-bs-toggle="tooltip" title="Todas las familias">Todas</option>');
-        proveedorSelect.html('<option value="" data-bs-toggle="tooltip" title="Todos los proveedores">Todos</option>');
+        // Limpiar y agregar opción por defecto
+        familiaStock.html('<option value="">Todas</option>');
+        proveedorStock.html('<option value="">Todos</option>');
+        familiaVentas.html('<option value="">Todas</option>');
+        proveedorVentas.html('<option value="">Todos</option>');
 
         descripcionesFamilias = {};
         descripcionesProveedores = {};
 
-        data.familias.forEach(familia => {
-            let descripcion = data.familia_descripciones[familia] || "Sin descripción";
-            descripcionesFamilias[familia] = descripcion;
-            familiaSelect.append(`<option value="${familia}">${familia}</option>`);
-        });
+        if (data.familias && data.familias.length > 0) {
+            data.familias.forEach(familia => {
+                let descripcion = data.familia_descripciones[familia] || "Sin descripción";
+                descripcionesFamilias[familia] = descripcion;
+                familiaStock.append(`<option value="${familia}">${familia}</option>`);
+                familiaVentas.append(`<option value="${familia}">${familia}</option>`);
+            });
+        } else {
+            console.error("⚠ No se encontraron familias en la API.");
+        }
 
-        data.proveedores.forEach(proveedor => {
-            let descripcion = data.proveedor_nombres[proveedor] || "Sin nombre";
-            descripcionesProveedores[proveedor] = descripcion;
-            proveedorSelect.append(`<option value="${proveedor}">${proveedor}</option>`);
-        });
+        if (data.proveedores && data.proveedores.length > 0) {
+            data.proveedores.forEach(proveedor => {
+                let descripcion = data.proveedor_nombres[proveedor] || "Sin nombre";
+                descripcionesProveedores[proveedor] = descripcion;
+                proveedorStock.append(`<option value="${proveedor}">${proveedor}</option>`);
+                proveedorVentas.append(`<option value="${proveedor}">${proveedor}</option>`);
+            });
+        } else {
+            console.error("⚠ No se encontraron proveedores en la API.");
+        }
 
+        console.log("✅ Familias y proveedores cargados correctamente.");
         activarTooltips();
+    }).fail(function() {
+        console.error("❌ Error al cargar los filtros desde la API.");
     });
 }
 
@@ -422,12 +480,25 @@ function actualizarDescripcion(selectId, inputId) {
 // 🔹 Cargar subfamilias dinámicamente cuando se elija una familia
 let isLoadingSubfamilias = false;
 
-function cargarSubfamilias() {
+function cargarSubfamilias(tipo) {
     if (isLoadingSubfamilias) return;
     isLoadingSubfamilias = true;
 
-    let familia = $("#familiaStock").val();
-    let subfamiliaSelect = $("#subfamiliaStock");
+    let familiaSelect, subfamiliaSelect;
+
+    // 🔹 Determinar si es para Stock o Ventas
+    if (tipo === "stock") {
+        familiaSelect = $("#familiaStock");
+        subfamiliaSelect = $("#subfamiliaStock");
+    } else if (tipo === "ventas") {
+        familiaSelect = $("#familiaVentas");
+        subfamiliaSelect = $("#subfamiliaVentas");
+    } else {
+        console.error("❌ Error: tipo desconocido en cargarSubfamilias");
+        return;
+    }
+
+    let familia = familiaSelect.val();
 
     // 🎯 Limpiar subfamilias antes de agregar opciones nuevas
     subfamiliaSelect.html('<option value="">Todas</option>');
@@ -444,11 +515,11 @@ function cargarSubfamilias() {
         let subfamiliasOptions = subfamiliasUnicas.map(subfamilia => `<option value="${subfamilia}">${subfamilia}</option>`).join("");
         subfamiliaSelect.append(subfamiliasOptions);
 
-        console.log("✅ Subfamilias cargadas:", subfamiliasUnicas);
+        console.log(`✅ Subfamilias cargadas para ${tipo}:`, subfamiliasUnicas);
         activarTooltips(); // 🔹 Reinicializar tooltips en las opciones cargadas
         isLoadingSubfamilias = false;
     }).fail(function() {
-        console.error("❌ Error al cargar subfamilias.");
+        console.error(`❌ Error al cargar subfamilias para ${tipo}.`);
         isLoadingSubfamilias = false;
     });
 }
@@ -468,12 +539,16 @@ function activarTooltips() {
 
 // 🔹 ELIMINAR EVENTOS PREVIOS ANTES DE AÑADIR EL `onchange`
 $(document).ready(function() {
-    cargarFiltrosStock(); // ✅ Cargar familias y proveedores sin afectar subfamilias
+    cargarFiltrosStock(); // ✅ Cargar familias y proveedores
 
-    // ✅ Asegurar que el evento "change" solo se registre una vez
     $("#familiaStock").off("change").on("change", function() {
         console.log("🔄 Cambio detectado en familiaStock, ejecutando cargarSubfamilias...");
-        cargarSubfamilias();
+        cargarSubfamilias('stock');
+    });
+
+    $("#familiaVentas").off("change").on("change", function() {
+        console.log("🔄 Cambio detectado en familiaVentas, ejecutando cargarSubfamilias...");
+        cargarSubfamilias('ventas');
     });
 });
 
