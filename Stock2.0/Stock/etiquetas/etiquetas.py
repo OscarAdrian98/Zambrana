@@ -272,8 +272,6 @@ def update_product_labels(connection, dataframe, batch_size=5000):
         return count > 0
 
     try:
-        # Agregar la columna 'stock_combinado' al DataFrame
-        dataframe.loc[:, 'stock_combinado'] = dataframe['quantity'] + dataframe['hay_stock_producto']
 
         # Diccionarios y listas para manejar las diferentes condiciones
         references_ps_product_with_date_no_stock = []
