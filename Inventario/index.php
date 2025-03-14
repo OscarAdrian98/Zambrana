@@ -23,7 +23,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
 
     // Si el usuario envía la clave
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['clave'])) {
-        if ($_POST['clave'] === "000") { // Clave de acceso
+        if ($_POST['clave'] === "Zambra05") { // Clave de acceso
             $_SESSION['acceso_autorizado'] = true;
             header("Location: index.php"); // Recargar la página autenticada
             exit();
@@ -66,6 +66,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportes de Inventario</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* Estilos generales */
@@ -144,6 +145,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#compras">Compras</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#vencimientos">Vencimientos</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#stock">Stock Actual</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#analisis">📊 Análisis y Predicción</a></li>
     </ul>
 
     <div class="tab-content">
@@ -299,7 +301,47 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
                 <div id="tablaStock"></div>
             </div>
         </div>
-    </div>
+        <!-- Análisis -->
+        <div id="analisis" class="tab-pane fade">
+            <h3 class="mt-4">📊 Análisis de Ventas</h3>
+
+            <!-- 🔹 Selección de fechas -->
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label for="fechaDesdeAnalisis" class="form-label">Desde:</label>
+                    <input type="date" id="fechaDesdeAnalisis" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="fechaHastaAnalisis" class="form-label">Hasta:</label>
+                    <input type="date" id="fechaHastaAnalisis" class="form-control">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="cargarAnalisis()">Actualizar Análisis</button>
+                </div>
+            </div>
+
+            <!-- 🔹 Nueva sección con métricas clave -->
+            <div class="row mt-4">
+                <!-- 🔹 Total Ventas y Beneficios -->
+                <div class="col-md-5">
+                    <div class="alert alert-info">
+                        <strong>🔢 Total Ventas (€):</strong> <span id="totalVentas">-</span> <br>
+                        <strong>💰 Beneficio sin IVA (€):</strong> <span id="beneficioSinIVA">-</span> <br>
+                        <strong>💰 Beneficio con IVA (€):</strong> <span id="beneficioConIVA">-</span> <br>
+                        <strong>📊 Ticket Promedio (€):</strong> <span id="ticketPromedio">-</span> <!-- Movido aquí -->
+                    </div>
+                </div>
+                <!-- 🔹 Top Productos (ahora más ancho) -->
+                <div class="col-md-7">
+                    <div class="alert alert-warning">
+                        <strong>🔥 Top 10 Productos:</strong> 
+                        <div id="topProductos" style="max-height: 400px; overflow: auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <canvas id="graficoVentas" class="mt-3"></canvas>
+        </div>
 </div>
 
 <script>
@@ -475,6 +517,109 @@ function actualizarDescripcion(selectId, inputId) {
     }
 
     document.getElementById(inputId).value = descripcion;
+}
+
+// 🔹 Cargar análisis de ventas con selección de fechas
+let chartInstance = null; // Guardará el gráfico actual para evitar superposición
+
+function cargarAnalisis() {
+    let fechaDesde = document.getElementById("fechaDesdeAnalisis").value;
+    let fechaHasta = document.getElementById("fechaHastaAnalisis").value;
+
+    if (!fechaDesde || !fechaHasta) {
+        alert("Por favor, selecciona un rango de fechas.");
+        return;
+    }
+
+    let btn = document.querySelector("button[onclick='cargarAnalisis()']");
+    btn.innerHTML = "Cargando...";
+    btn.disabled = true;
+
+    fetch(`http://192.168.1.201:5003/analisis_ventas?fecha_desde=${fechaDesde}&fecha_hasta=${fechaHasta}`)
+        .then(response => response.json())
+        .then(data => {
+            let ctx = document.getElementById("graficoVentas").getContext("2d");
+
+            // Si ya hay un gráfico, destruirlo antes de crear uno nuevo
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: data.fechas,
+                    datasets: [{
+                        label: "Ventas",
+                        data: data.ventas,
+                        backgroundColor: "blue"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { 
+                            ticks: { autoSkip: true, maxTicksLimit: 20 }, 
+                            title: { display: true, text: "Fecha de Venta" }
+                        },
+                        y: { 
+                            title: { display: true, text: "Cantidad Vendida" } 
+                        }
+                    }
+                }
+            });
+
+            // Función para convertir un texto a formato "NOMPROPIO" (primera letra en mayúscula)
+            function capitalizeWords(str) {
+                return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+            }
+
+            // 🔹 Actualizar métricas en el frontend sin duplicar valores
+            document.getElementById("totalVentas").innerText = `${data.total_ventas.toFixed(2)} €`;
+            document.getElementById("beneficioSinIVA").innerText = `${data.beneficio_sin_iva_total.toFixed(2)} €`;
+            document.getElementById("beneficioConIVA").innerText = `${data.beneficio_con_iva_total.toFixed(2)} €`;
+            document.getElementById("ticketPromedio").innerText = `${data.ticket_promedio.toFixed(2)} €`;
+
+            // 🔥 Ajustar la tabla de "Top Productos"
+            let topProductosHtml = `
+                <div style="max-height: 400px; overflow: auto; padding: 5px;">
+                    <table class="table table-striped table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Referencia</th>
+                                <th>Producto</th>
+                                <th>Cantidad Vendida</th>
+                                <th>Beneficio sin IVA (€)</th>
+                                <th>Beneficio con IVA (€)</th>
+                                <th>Stock Actual</th> <!-- ✅ Nueva columna añadida -->
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            data.top_productos.forEach(producto => {
+                topProductosHtml += `
+                    <tr>
+                        <td>${producto.refProducto}</td>
+                        <td>${capitalizeWords(producto.nombreProducto)}</td>
+                        <td>${producto.cantidad_total}</td>
+                        <td>${producto.beneficio_sin_iva ? producto.beneficio_sin_iva.toFixed(2) + " €" : "0.00 €"}</td>
+                        <td>${producto.beneficio_con_iva ? producto.beneficio_con_iva.toFixed(2) + " €" : "0.00 €"}</td>
+                        <td>${producto.stock_actual ?? "N/A"}</td> <!-- ✅ Mostrar stock actual -->
+                    </tr>`;
+            });
+
+            topProductosHtml += `</tbody></table></div>`;
+            document.getElementById("topProductos").innerHTML = topProductosHtml;
+
+            // Restablecer el botón
+            btn.innerHTML = "Actualizar Análisis";
+            btn.disabled = false;
+        })
+        .catch(error => {
+            console.error("Error cargando análisis:", error);
+            btn.innerHTML = "Actualizar Análisis";
+            btn.disabled = false;
+        });
 }
 
 // 🔹 Cargar subfamilias dinámicamente cuando se elija una familia
