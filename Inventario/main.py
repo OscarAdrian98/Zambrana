@@ -238,10 +238,16 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
             # Evitar división por cero
             iva = float(row[9] or 0)  
             beneficio_sin_iva = 0.00
-            if total_ajustado > 0 and (1 + iva / 100) != 0:
-                beneficio_sin_iva = round(total_ajustado / (1 + iva / 100) - costo_venta, 2)
+            beneficio_con_iva = 0.00
 
-            beneficio_con_iva = total_ajustado - costo_venta
+            # Si el producto fue regalado (precio de venta 0), ajustar los beneficios correctamente
+            if total_ajustado == 0:
+                beneficio_sin_iva = -costo_venta  # La pérdida es simplemente el costo
+                beneficio_con_iva = -costo_venta  # No restamos IVA adicional porque no se cobró
+            else:
+                # Cálculo normal para productos vendidos
+                beneficio_sin_iva = round(total_ajustado / (1 + iva / 100) - costo_venta, 2)
+                beneficio_con_iva = total_ajustado - costo_venta
 
             # Evitar error al calcular porcentaje
             beneficio_sin_iva_pct = 0.00
