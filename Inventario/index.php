@@ -23,7 +23,7 @@ if (!isset($_SESSION['acceso_autorizado']) || $_SESSION['acceso_autorizado'] !==
 
     // Si el usuario envía la clave
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['clave'])) {
-        if ($_POST['clave'] === "Zambra05") { // Clave de acceso
+        if ($_POST['clave'] === "") { // Clave de acceso
             $_SESSION['acceso_autorizado'] = true;
             header("Location: index.php"); // Recargar la página autenticada
             exit();
