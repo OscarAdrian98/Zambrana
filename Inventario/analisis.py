@@ -110,21 +110,31 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
         total_cantidad_vendida = ventas_agrupadas["ventas_totales"].sum() if not ventas_agrupadas.empty else 0
         ticket_promedio = round(total_ventas / total_cantidad_vendida, 2) if total_cantidad_vendida > 0 else 0
 
-        # ✅ 7. Obtener top productos
+        # ✅ 7. Obtener top productos sin excluir los que generan pérdidas
         referencias_excluir = ["PW", "MOTHVA", "PC3", "RE", "SC", "PAYPAL"]
         nombres_excluir = ["PORTES", "MANO OBRA", "GASTOS DE REEMBOLSO", "RECARGO", "Recargo Pago Por Paypal"]
 
         df_ventas["nombreProducto_clean"] = df_ventas["nombreProducto"].str.upper().str.strip()
         df_ventas["refProducto_clean"] = df_ventas["refProducto"].str.upper().str.strip()
 
+        # ✅ Filtrar productos que no deben incluirse en el análisis (pero sin excluir por pérdidas)
         df_top_productos = df_ventas[
             ~df_ventas["nombreProducto_clean"].isin(nombres_excluir) & 
             ~df_ventas["refProducto_clean"].isin(referencias_excluir)
         ]
 
-        top_productos = df_top_productos.nlargest(10, "cantidad_vendida")[[
-            "refProducto", "nombreProducto", "cantidad_vendida", "beneficio_sin_iva", "beneficio_con_iva"
-        ]].rename(columns={"cantidad_vendida": "cantidad_total"})
+        # ✅ Agrupar por referencia y nombre para sumar cantidades vendidas y beneficios
+        top_productos = df_top_productos.groupby(["refProducto", "nombreProducto"]).agg(
+            cantidad_total=("cantidad_vendida", "sum"),
+            beneficio_sin_iva=("beneficio_sin_iva", "sum"),
+            beneficio_con_iva=("beneficio_con_iva", "sum")
+        ).reset_index()
+
+        # ✅ Ordenar por cantidad vendida (sin importar si hay pérdidas) y tomar los 10 más vendidos
+        top_productos = top_productos.sort_values("cantidad_total", ascending=False).head(10)
+
+        # ✅ Log para verificar que el chubasquero y otros productos aparecen en el análisis
+        logging.info(f"📊 Top 20 productos antes del corte a 10:\n{top_productos.head(20)}")
 
         # ✅ 8. Obtener stock actual desde la API
         try:
