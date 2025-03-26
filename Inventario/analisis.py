@@ -90,14 +90,20 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
         df_ventas["cantidad_vendida"] = df_ventas["cantidad_vendida"].astype(int)
 
         # ✅ 4. Agrupar ventas correctamente por fecha (ahora desde ventas individuales)
-        # Excluir solo las referencias que no quieres en la gráfica
-        referencias_excluir_grafica = ["PW", "MOTHVA", "PC3", "RE", "SC", "PAYPAL", "PCBL", "PV"]
+        # 👉 Excluir solo aquí las referencias que no quieres en la gráfica
+        referencias_excluir_grafica = ["PW", "MOTHVA", "PC3", "RE", "SC", "PAYPAL"]
         df_ventas_grafica = df_ventas[~df_ventas["refProducto"].str.upper().isin(referencias_excluir_grafica)]
+
+        # ✅ Convertir fecha_venta a datetime
+        df_ventas_grafica["fecha_venta"] = pd.to_datetime(df_ventas_grafica["fecha_venta"], dayfirst=True, errors="coerce")
 
         ventas_agrupadas = df_ventas_grafica.groupby("fecha_venta").agg(
             ventas_totales=("cantidad_vendida", "sum"),
             total_ventas=("total_ajustado", "sum")
         ).reset_index()
+
+        # ✅ Ordenar por fecha
+        ventas_agrupadas = ventas_agrupadas.sort_values("fecha_venta")
 
         # ✅ 5. Calcular ticket promedio correctamente
         total_ventas = ventas_agrupadas["total_ventas"].sum()
@@ -150,7 +156,7 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
 
         # ✅ 10. Resultado final en JSON
         resultado = {
-            "fechas": ventas_agrupadas["fecha_venta"].tolist(),
+            "fechas": ventas_agrupadas["fecha_venta"].dt.strftime('%d/%m/%Y').tolist(),
             "ventas": ventas_agrupadas["ventas_totales"].tolist(),
             "total_ventas": round(total_ventas, 2),
             "ticket_promedio": ticket_promedio,
