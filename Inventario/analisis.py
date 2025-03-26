@@ -53,9 +53,9 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
     try:
         logging.info("📡 Solicitando datos de ventas para análisis")
 
-        # ✅ 1. Obtener datos de ventas
+        # ✅ 1. Obtener datos de ventas individuales (cambio solicitado)
         try:
-            response = requests.get(f"http://192.168.1.201:5002/get_data?tipo=ventas&fecha_desde={fecha_desde}&fecha_hasta={fecha_hasta}&ventas=global")
+            response = requests.get(f"http://192.168.1.201:5002/get_data?tipo=ventas&fecha_desde={fecha_desde}&fecha_hasta={fecha_hasta}&ventas=individual")
             response.raise_for_status()
             ventas_data = response.json()
         except (requests.RequestException, ValueError) as e:
@@ -77,21 +77,10 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
                 logging.error(f"❌ Falta la columna {col} en ventas_data")
                 raise HTTPException(status_code=500, detail=f"Columna {col} no encontrada en los datos de ventas.")
 
-        # ✅ 2. Extraer la fila "TOTAL"
-        total_ventas = 0
-        beneficio_sin_iva_total = 0
-        beneficio_con_iva_total = 0
-
-        if "TOTAL" in df_ventas["refProducto"].values:
-            total_fila = df_ventas[df_ventas["refProducto"] == "TOTAL"].iloc[0]
-            total_ventas = float(str(total_fila["total_ajustado"]).replace(".", "").replace(",", "."))
-            beneficio_sin_iva_total = float(str(total_fila["beneficio_sin_iva"]).replace(".", "").replace(",", "."))
-            beneficio_con_iva_total = float(str(total_fila["beneficio_con_iva"]).replace(".", "").replace(",", "."))
-
-        # ✅ 3. Filtrar ventas excluyendo la fila "TOTAL"
+        # ✅ 2. Filtrar ventas excluyendo la fila "TOTAL" si existe (probablemente ya no exista)
         df_ventas = df_ventas[df_ventas["refProducto"] != "TOTAL"]
 
-        # ✅ 4. Convertir valores numéricos
+        # ✅ 3. Convertir valores numéricos correctamente
         def limpiar_numeros(valor):
             return valor.astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False).astype(float)
 
@@ -100,43 +89,43 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
         df_ventas["beneficio_con_iva"] = limpiar_numeros(df_ventas["beneficio_con_iva"])
         df_ventas["cantidad_vendida"] = df_ventas["cantidad_vendida"].astype(int)
 
-        # ✅ 5. Agrupar ventas por fecha
-        ventas_agrupadas = df_ventas.groupby("fecha_venta").agg(
+        # ✅ 4. Agrupar ventas correctamente por fecha (ahora desde ventas individuales)
+        # Excluir solo las referencias que no quieres en la gráfica
+        referencias_excluir_grafica = ["PW", "MOTHVA", "PC3", "RE", "SC", "PAYPAL", "PCBL", "PV"]
+        df_ventas_grafica = df_ventas[~df_ventas["refProducto"].str.upper().isin(referencias_excluir_grafica)]
+
+        ventas_agrupadas = df_ventas_grafica.groupby("fecha_venta").agg(
             ventas_totales=("cantidad_vendida", "sum"),
             total_ventas=("total_ajustado", "sum")
         ).reset_index()
 
-        # ✅ 6. Calcular ticket promedio
-        total_cantidad_vendida = ventas_agrupadas["ventas_totales"].sum() if not ventas_agrupadas.empty else 0
+        # ✅ 5. Calcular ticket promedio correctamente
+        total_ventas = ventas_agrupadas["total_ventas"].sum()
+        total_cantidad_vendida = ventas_agrupadas["ventas_totales"].sum()
         ticket_promedio = round(total_ventas / total_cantidad_vendida, 2) if total_cantidad_vendida > 0 else 0
 
-        # ✅ 7. Obtener top productos sin excluir los que generan pérdidas
+        # ✅ 6. Obtener top productos sin excluir los que generan pérdidas
         referencias_excluir = ["PW", "MOTHVA", "PC3", "RE", "SC", "PAYPAL"]
         nombres_excluir = ["PORTES", "MANO OBRA", "GASTOS DE REEMBOLSO", "RECARGO", "Recargo Pago Por Paypal"]
 
         df_ventas["nombreProducto_clean"] = df_ventas["nombreProducto"].str.upper().str.strip()
         df_ventas["refProducto_clean"] = df_ventas["refProducto"].str.upper().str.strip()
 
-        # ✅ Filtrar productos que no deben incluirse en el análisis (pero sin excluir por pérdidas)
         df_top_productos = df_ventas[
-            ~df_ventas["nombreProducto_clean"].isin(nombres_excluir) & 
+            ~df_ventas["nombreProducto_clean"].isin(nombres_excluir) &
             ~df_ventas["refProducto_clean"].isin(referencias_excluir)
         ]
 
-        # ✅ Agrupar por referencia y nombre para sumar cantidades vendidas y beneficios
         top_productos = df_top_productos.groupby(["refProducto", "nombreProducto"]).agg(
             cantidad_total=("cantidad_vendida", "sum"),
             beneficio_sin_iva=("beneficio_sin_iva", "sum"),
             beneficio_con_iva=("beneficio_con_iva", "sum")
-        ).reset_index()
+        ).reset_index().sort_values("cantidad_total", ascending=False).head(10)
 
-        # ✅ Ordenar por cantidad vendida (sin importar si hay pérdidas) y tomar los 10 más vendidos
-        top_productos = top_productos.sort_values("cantidad_total", ascending=False).head(10)
+        # ✅ Log para verificar productos analizados
+        logging.info(f"📊 Top productos:\n{top_productos}")
 
-        # ✅ Log para verificar que el chubasquero y otros productos aparecen en el análisis
-        logging.info(f"📊 Top 20 productos antes del corte a 10:\n{top_productos.head(20)}")
-
-        # ✅ 8. Obtener stock actual desde la API
+        # ✅ 7. Obtener stock actual desde la API
         try:
             stock_response = requests.get("http://192.168.1.201:5002/get_data?tipo=stock")
             stock_response.raise_for_status()
@@ -146,19 +135,23 @@ async def analisis_ventas(fecha_desde: str = Query(...), fecha_hasta: str = Quer
             logging.error(f"❌ Error al obtener stock: {e}")
             df_stock = pd.DataFrame(columns=["refProducto", "stock_actual"])
 
-        # ✅ 9. Unir el stock con el top productos
+        # ✅ 8. Unir el stock con el top productos
         df_stock = df_stock[["refProducto", "stock_actual"]].drop_duplicates()
         df_stock["stock_actual"] = df_stock["stock_actual"].fillna(0).astype(int)
 
         if not df_stock.empty:
             top_productos = top_productos.merge(df_stock, on="refProducto", how="left").fillna(0)
         else:
-            top_productos["stock_actual"] = 0  # Si no hay stock, agregar columna con 0
+            top_productos["stock_actual"] = 0
 
-        # ✅ 10. Convertir a JSON
+        # ✅ 9. Calcular beneficios totales correctos desde ventas individuales
+        beneficio_sin_iva_total = df_ventas["beneficio_sin_iva"].sum()
+        beneficio_con_iva_total = df_ventas["beneficio_con_iva"].sum()
+
+        # ✅ 10. Resultado final en JSON
         resultado = {
-            "fechas": ventas_agrupadas["fecha_venta"].tolist() if not ventas_agrupadas.empty else [],
-            "ventas": ventas_agrupadas["ventas_totales"].tolist() if not ventas_agrupadas.empty else [],
+            "fechas": ventas_agrupadas["fecha_venta"].tolist(),
+            "ventas": ventas_agrupadas["ventas_totales"].tolist(),
             "total_ventas": round(total_ventas, 2),
             "ticket_promedio": ticket_promedio,
             "top_productos": top_productos.to_dict(orient="records"),

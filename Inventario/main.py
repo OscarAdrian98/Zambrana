@@ -173,6 +173,8 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
     try:
         query = """
         SELECT 
+            fvl.[Serie] AS serie,
+            fvl.[Codigo] AS codigo,
             fvl.[Artículo] AS refProducto, 
             a.[Descripción] AS nombreProducto, 
             fvl.Cantidad AS cantidad_vendida, 
@@ -200,7 +202,6 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
 
         parametros = [fecha_desde, fecha_hasta]
 
-        # Agregar filtros opcionales
         if familia and familia.strip():
             query += " AND a.Familia = ?"
             parametros.append(familia.strip())
@@ -215,6 +216,7 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
 
         logging.info(f"Ejecutando consulta SQL desde {fecha_desde} hasta {fecha_hasta} con filtros: {parametros}")
         resultados = ejecutar_consulta(query, tuple(parametros))
+        resultados = [r for r in resultados if not (r[2] and str(r[2]).startswith("SC"))] # Excluir referencia "SC"
 
         if not resultados:
             logging.warning("No hay datos para mostrar.")
@@ -224,41 +226,41 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
         total_factura_acumulado = 0
         total_beneficio_sin_iva = 0
         total_beneficio_con_iva = 0
+        total_costo_venta = 0
 
         for row in resultados:
             try:
-                total_linea = round(float(row[4] or 0), 2)
-                total_factura = round(float(row[5] or 0), 2)
-                total_ajustado = round(float(row[6] or 0), 2)
-                costo_venta = round(float(row[7] or 0), 2)
+                total_linea = round(float(row[6] or 0), 2)
+                total_factura = round(float(row[7] or 0), 2)
+                total_ajustado = round(float(row[8] or 0), 2)
+                costo_venta = round(float(row[9] or 0), 2)
             except (ValueError, TypeError):
                 logging.warning(f"❌ Error convirtiendo valores numéricos: {row}")
-                continue  # Saltar fila si hay un error en los datos
+                continue
 
-            # Evitar división por cero
-            iva = float(row[9] or 0)  
+            iva = float(row[11] or 0)  
             beneficio_sin_iva = 0.00
             beneficio_con_iva = 0.00
 
-            # Si el producto fue regalado (precio de venta 0), ajustar los beneficios correctamente
-            if total_ajustado == 0:
-                beneficio_sin_iva = -costo_venta  # La pérdida es simplemente el costo
-                beneficio_con_iva = -costo_venta  # No restamos IVA adicional porque no se cobró
+            if total_factura == 0 and total_ajustado == 0:
+                beneficio_sin_iva = total_linea - costo_venta  
+                beneficio_con_iva = total_linea - costo_venta  
+                total_ajustado = total_linea
             else:
-                # Cálculo normal para productos vendidos
                 beneficio_sin_iva = round(total_ajustado / (1 + iva / 100) - costo_venta, 2)
                 beneficio_con_iva = total_ajustado - costo_venta
 
-            # Evitar error al calcular porcentaje
             beneficio_sin_iva_pct = 0.00
             if total_ajustado > 0:
                 beneficio_sin_iva_pct = round((beneficio_sin_iva / total_ajustado) * 100, 2)
 
             fila = {
-                "refProducto": row[0] or "",
-                "nombreProducto": row[1] or "Sin nombre",
-                "cantidad_vendida": int(row[2]) if row[2] else 0,
-                "fecha_venta": row[3].strftime("%d-%m-%Y") if row[3] else "N/A",
+                "serie": row[0] if ventas == "individual" else "",  # Solo en ventas individuales
+                "codigo": row[1] if ventas == "individual" else "",
+                "refProducto": row[2] or "",
+                "nombreProducto": row[3] or "Sin nombre",
+                "cantidad_vendida": int(row[4]) if row[4] else 0,
+                "fecha_venta": row[5].strftime("%d-%m-%Y") if row[5] else "N/A",
                 "total_linea": formatear_numero(total_linea),
                 "total_factura": formatear_numero(total_factura),
                 "total_ajustado": formatear_numero(total_ajustado),
@@ -266,44 +268,54 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
                 "beneficio_sin_iva": formatear_numero(beneficio_sin_iva),
                 "beneficio_sin_iva_%": formatear_numero(beneficio_sin_iva_pct),
                 "beneficio_con_iva": formatear_numero(beneficio_con_iva),
-                "familia": row[12] or "",
-                "subfamilia": row[13] or "",
-                "proveedor": row[14] or ""
+                "familia": row[14] or "",
+                "subfamilia": row[15] or "",
+                "proveedor": row[16] or ""
             }
 
             ventas_lista.append(fila)
-
-            # Acumular totales
             total_factura_acumulado += total_ajustado
+            total_costo_venta += costo_venta
             total_beneficio_sin_iva += beneficio_sin_iva
             total_beneficio_con_iva += beneficio_con_iva
 
-        # Calcular porcentaje de beneficio total
         total_beneficio_sin_iva_pct = round((total_beneficio_sin_iva / total_factura_acumulado) * 100, 2) if total_factura_acumulado > 0 else 0.00
 
-        # Agregar stock actual
         stock_data = obtener_stock_actual() or []
         stock_dict = {s.get("refProducto", ""): s.get("stock_actual", 0) for s in stock_data}
 
         for fila in ventas_lista:
             fila["stock_actual"] = stock_dict.get(fila["refProducto"], 0)
 
-        # Agregar fila de totales
+        # 🔹 Agrupar ventas si es "global"
+        if ventas == "global":
+            df = pd.DataFrame(ventas_lista)
+            df_grouped = df.groupby(["refProducto", "nombreProducto", "familia", "subfamilia", "proveedor"], as_index=False).agg({
+                "cantidad_vendida": "sum",
+                "total_factura": lambda x: formatear_numero(sum(float(i.replace('.', '').replace(',', '.')) for i in x)),
+                "total_ajustado": lambda x: formatear_numero(sum(float(i.replace('.', '').replace(',', '.')) for i in x)),
+                "costo_venta": lambda x: formatear_numero(sum(float(i.replace('.', '').replace(',', '.')) for i in x)),
+                "beneficio_sin_iva": lambda x: formatear_numero(sum(float(i.replace('.', '').replace(',', '.')) for i in x)),
+                "beneficio_con_iva": lambda x: formatear_numero(sum(float(i.replace('.', '').replace(',', '.')) for i in x)),
+                "stock_actual": "max",
+                "fecha_venta": "max"
+            })
+
+            ventas_lista = df_grouped.to_dict(orient="records")
+
         total_fila = {
+            "serie": "" if ventas == "global" else "TOTAL",
+            "codigo": "" if ventas == "global" else "",
             "refProducto": "TOTAL",
             "nombreProducto": "",
             "cantidad_vendida": sum(int(item["cantidad_vendida"]) for item in ventas_lista),
             "fecha_venta": "",
-            "total_linea": "",
             "total_factura": "",
             "total_ajustado": formatear_numero(total_factura_acumulado),
-            "costo_venta": formatear_numero(sum(float(item["costo_venta"].replace(".", "").replace(",", ".")) for item in ventas_lista)),
+            "costo_venta": formatear_numero(total_costo_venta),
             "beneficio_sin_iva": formatear_numero(total_beneficio_sin_iva),
             "beneficio_sin_iva_%": formatear_numero(total_beneficio_sin_iva_pct),
             "beneficio_con_iva": formatear_numero(total_beneficio_con_iva),
-            "familia": "",
-            "subfamilia": "",
-            "proveedor": "",
             "stock_actual": ""
         }
         ventas_lista.append(total_fila)
@@ -313,72 +325,6 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
     except Exception as e:
         logging.exception("❌ Error en obtener_ventas")
         raise HTTPException(status_code=500, detail=str(e))
-
-# Función para agrupar ventas globales
-def agrupar_ventas(ventas_lista, total_beneficio_sin_iva_pct):
-    import pandas as pd
-
-    df = pd.DataFrame(ventas_lista)
-
-    # Verificar que el DataFrame no esté vacío antes de agrupar
-    if df.empty:
-        return []
-
-    # Convertir columnas a float antes de agrupar
-    columnas_a_convertir = ["total_ajustado", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva"]
-    for col in columnas_a_convertir:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False).astype(float)
-
-    # 🔹 Agrupar por refProducto, nombreProducto, Familia, SubFamilia y Proveedor
-    df_grouped = df.groupby(["refProducto", "nombreProducto", "familia", "subfamilia", "proveedor"]).agg({
-        "cantidad_vendida": "sum",
-        "fecha_venta": "max",
-        "total_ajustado": "sum",
-        "costo_venta": "sum",
-        "beneficio_sin_iva": "sum",
-        "beneficio_con_iva": "sum",
-    }).reset_index()
-
-    # Calcular el porcentaje de beneficio sin IVA
-    df_grouped["beneficio_sin_iva_%"] = df_grouped.apply(
-        lambda row: round((row["beneficio_sin_iva"] / row["total_ajustado"]) * 100, 2) if row["total_ajustado"] > 0 else 0.00,
-        axis=1
-    )
-
-    # Convertir fechas al formato "DD-MM-YYYY"
-    df_grouped["fecha_venta"] = pd.to_datetime(df_grouped["fecha_venta"], errors="coerce").dt.strftime("%d-%m-%Y")
-
-    # Agregar stock actual
-    stock_data = obtener_stock_actual()
-    stock_dict = {s["refProducto"]: s["stock_actual"] for s in stock_data}
-    df_grouped["stock_actual"] = df_grouped["refProducto"].map(stock_dict).fillna(0).astype(int)
-
-    # Formatear números con miles separados por puntos y decimales con comas
-    for col in ["total_ajustado", "costo_venta", "beneficio_sin_iva", "beneficio_con_iva", "beneficio_sin_iva_%"]:
-        df_grouped[col] = df_grouped[col].apply(lambda x: f"{x:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
-
-    # 🔹 Agregar fila de totales
-    total_fila = {
-        "refProducto": "TOTAL",
-        "nombreProducto": "",
-        "familia": "",
-        "subfamilia": "",
-        "proveedor": "",
-        "cantidad_vendida": int(df_grouped["cantidad_vendida"].sum()),
-        "fecha_venta": "",
-        "total_ajustado": f"{df_grouped['total_ajustado'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "costo_venta": f"{df_grouped['costo_venta'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "beneficio_sin_iva": f"{df_grouped['beneficio_sin_iva'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "beneficio_con_iva": f"{df_grouped['beneficio_con_iva'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float).sum():,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
-        "beneficio_sin_iva_%": f"{total_beneficio_sin_iva_pct:,.2f}".replace(".", ","),
-        "stock_actual": ""
-    }
-
-    resultado = df_grouped.to_dict(orient="records")
-    resultado.append(total_fila)
-
-    return resultado
 
 # Función para obtener compras con formato corregido
 def obtener_compras(fecha_desde, fecha_hasta):
@@ -646,6 +592,7 @@ def obtener_stock_actual(familia: Optional[str] = None, subfamilia: Optional[str
     logging.info(f"Ejecutando consulta STOCK con filtros: {parametros}")
 
     resultados = ejecutar_consulta(query, tuple(parametros))
+    resultados = [r for r in resultados if not (r[2] and str(r[2]).startswith("SC"))] # Excluir referencia "SC"
 
     if not resultados:
         return []

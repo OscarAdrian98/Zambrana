@@ -574,11 +574,19 @@ function cargarAnalisis() {
                 return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
             }
 
-            // 🔹 Actualizar métricas en el frontend sin duplicar valores
-            document.getElementById("totalVentas").innerText = `${data.total_ventas.toFixed(2)} €`;
-            document.getElementById("beneficioSinIVA").innerText = `${data.beneficio_sin_iva_total.toFixed(2)} €`;
-            document.getElementById("beneficioConIVA").innerText = `${data.beneficio_con_iva_total.toFixed(2)} €`;
-            document.getElementById("ticketPromedio").innerText = `${data.ticket_promedio.toFixed(2)} €`;
+            // 🔹 Función para formatear números con separador de miles y coma para decimales
+            function formatNumber(num) {
+                return new Intl.NumberFormat("es-ES", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(num);
+            }
+
+            // 🔹 Actualizar métricas en el frontend aplicando el formato correcto
+            document.getElementById("totalVentas").innerText = formatNumber(data.total_ventas) + " €";
+            document.getElementById("beneficioSinIVA").innerText = formatNumber(data.beneficio_sin_iva_total) + " €";
+            document.getElementById("beneficioConIVA").innerText = formatNumber(data.beneficio_con_iva_total) + " €";
+            document.getElementById("ticketPromedio").innerText = formatNumber(data.ticket_promedio) + " €";
 
             // 🔥 Ajustar la tabla de "Top Productos"
             let topProductosHtml = `
@@ -601,9 +609,9 @@ function cargarAnalisis() {
                     <tr>
                         <td>${producto.refProducto}</td>
                         <td>${capitalizeWords(producto.nombreProducto)}</td>
-                        <td>${producto.cantidad_total}</td>
-                        <td>${producto.beneficio_sin_iva ? producto.beneficio_sin_iva.toFixed(2) + " €" : "0.00 €"}</td>
-                        <td>${producto.beneficio_con_iva ? producto.beneficio_con_iva.toFixed(2) + " €" : "0.00 €"}</td>
+                        <td>${formatNumber(producto.cantidad_total)}</td>
+                        <td>${producto.beneficio_sin_iva ? formatNumber(producto.beneficio_sin_iva) + " €" : "0,00 €"}</td>
+                        <td>${producto.beneficio_con_iva ? formatNumber(producto.beneficio_con_iva) + " €" : "0,00 €"}</td>
                         <td>${producto.stock_actual ?? "N/A"}</td> <!-- ✅ Mostrar stock actual -->
                     </tr>`;
             });
