@@ -1,0 +1,26 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clona el repo
+        uses: actions/checkout@v3
+
+      - name: Configura Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instala dependencias
+        run: |
+          pip install -r requirements.txt
+
+      - name: Ejecuta los tests
+        run: |
+          pytest Stock2.0/Stock/tests
