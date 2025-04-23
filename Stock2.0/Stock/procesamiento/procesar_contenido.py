@@ -16,7 +16,7 @@ def check_stock(x):
     """Función para determinar si hay stock basado en valores de diferentes formatos."""
     try:
         x_str = str(x).strip().lower()
-        if x_str in ['yes', 'si', 'sí', 'y', 'true', 'mas de 3 uds', '9+', 'mas de 5', '5 o menos', ' 5 o menos', '10+']:
+        if x_str in ['yes', 'si', 'sí', 'y', 'true', 'mas de 3 uds', '9+', 'mas de 5', '5 o menos', ' 5 o menos', '10+', 'Mas de 5']:
             return 1
         elif x_str in ['no', 'n', 'false', '-', '0', 'sin stock']:
             return 0
@@ -325,68 +325,104 @@ def actualizar_base_datos(df, id_proveedor, id_marca, conexion_proveedores, cone
         logging.error(f"❌ Error al procesar el contenido: {e}")
         raise e
         
-# Funcion para ver las referencias que no se han actualizado.   
-def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_proveedores, prestashop_df, proveedor_df):
+# Función para ver las referencias que no se han actualizado.
+def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_proveedores, conexion_prestashop, prestashop_df, proveedor_df):
+    from datetime import datetime
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
-    referencias_no_actualizadas = []
 
     try:
-        # 🔎 1️⃣ Obtener referencias de la base de datos de proveedores que NO se actualizaron hoy
+        # 1️⃣ Obtener referencias no actualizadas hoy en la tabla 'productos'
         with conexion_proveedores.cursor() as cursor:
-            consulta_no_actualizadas_hoy = """
-                SELECT referencia_producto, hay_stock_producto
+            cursor.execute("""
+                SELECT referencia_producto
                 FROM productos
                 WHERE id_proveedor = %s AND id_marca = %s AND DATE(fecha_actualizacion_producto) != %s
-            """
-            cursor.execute(consulta_no_actualizadas_hoy, (id_proveedor, id_marca, fecha_actual))
-            referencias_no_actualizadas = cursor.fetchall()  # Lista de tuplas (referencia_producto, hay_stock_producto)
+            """, (id_proveedor, id_marca, fecha_actual))
+            referencias_no_actualizadas = [str(row[0]) for row in cursor.fetchall()]
 
         if not referencias_no_actualizadas:
-            logging.info("✅ Todas las referencias para id_proveedor y id_marca se han actualizado hoy.")
+            logging.info("✅ Todas las referencias están actualizadas hoy.")
             return
 
-    except Exception as e:
-        conexion_proveedores.rollback()
-        logging.error(f"❌ Error al consultar referencias no actualizadas: {e}")
-        return
+        # 2️⃣ Convertir listas a sets para comparar en bloque
+        referencias_set = set(referencias_no_actualizadas)
+        proveedor_set = set(proveedor_df['referencia'].astype(str))
+        prestashop_set = set(prestashop_df['reference'].astype(str))
 
-    try:
-        # 🔗 2️⃣ Comparar referencias no actualizadas con la tabla auxiliar de PrestaShop
-        referencias_en_prestashop = prestashop_df['reference'].astype(str).tolist()
-        referencias_no_actualizadas_y_en_prestashop = [
-            (ref, stock) for ref, stock in referencias_no_actualizadas if str(ref) in referencias_en_prestashop
-        ]
+        referencias_faltantes = referencias_set - proveedor_set
 
-        if not referencias_no_actualizadas_y_en_prestashop:
-            logging.info("✅ No hay referencias no actualizadas presentes en PrestaShop.")
-            return
+        actualizar_a_0 = list(referencias_faltantes - prestashop_set)
+        actualizar_a_1 = list(referencias_faltantes & prestashop_set)
 
-        # 📝 3️⃣ Actualizar referencias encontradas: stock a '0'
+        for ref in actualizar_a_0:
+            logging.info(f"🔴 {ref} → stock = 0 (no llegó del proveedor ni está en PrestaShop)")
+
+        for ref in actualizar_a_1:
+            logging.info(f"🟡 {ref} → stock = 1 (no llegó del proveedor pero está en PrestaShop)")
+
         with conexion_proveedores.cursor() as cursor:
-            for referencia, _ in referencias_no_actualizadas_y_en_prestashop:
-                cursor.execute(
-                    """
+            # 3️⃣ Actualizar a 0
+            if actualizar_a_0:
+                placeholders = ','.join(['%s'] * len(actualizar_a_0))
+                query_0 = f"""
                     UPDATE productos
                     SET stock_txt_producto = '0', hay_stock_producto = '0'
-                    WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto = %s
-                    """,
-                    (id_proveedor, id_marca, referencia)
-                )
-            conexion_proveedores.commit()
+                    WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
+                """
+                cursor.execute(query_0, (id_proveedor, id_marca, *actualizar_a_0))
+                logging.info(f"🔻 {len(actualizar_a_0)} referencias actualizadas a stock = 0")
 
-        # 🪵 4️⃣ Log de las referencias modificadas
-        for referencia, stock_proveedor in referencias_no_actualizadas_y_en_prestashop:
-            stock_prestashop = prestashop_df[prestashop_df['reference'] == str(referencia)]['quantity'].iloc[0]
-            mensaje_log = (
-                f"🔄 Referencia no actualizada y presente en PrestaShop: {referencia}, "
-                f"Stock en PrestaShop: {stock_prestashop}, Stock del proveedor actualizado a '0', "
-                f"id_proveedor: {id_proveedor}, id_marca: {id_marca}"
-            )
-            logging.info(mensaje_log)
+            # 4️⃣ Actualizar a 1
+            if actualizar_a_1:
+                placeholders = ','.join(['%s'] * len(actualizar_a_1))
+                query_1 = f"""
+                    UPDATE productos
+                    SET hay_stock_producto = '1'
+                    WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
+                """
+                cursor.execute(query_1, (id_proveedor, id_marca, *actualizar_a_1))
+                logging.info(f"🟢 {len(actualizar_a_1)} referencias marcadas con hay_stock_producto = 1")
+
+            conexion_proveedores.commit()
 
     except Exception as e:
         conexion_proveedores.rollback()
-        logging.error(f"❌ Error al actualizar referencias: {e}")
+        logging.error(f"❌ Error durante verificación de referencias: {e}")
+
+    # 5️⃣ Reactivar atributos con stock si están en id_shop = 99
+    try:
+        with conexion_prestashop.cursor() as cursor:
+            query_reactivar = """
+                SELECT pas.id_product_attribute, pa.reference
+                FROM ps_product_attribute_shop pas
+                INNER JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+                INNER JOIN ps_stock_available sa 
+                    ON pa.id_product_attribute = sa.id_product_attribute AND sa.id_shop = 1
+                WHERE sa.quantity > 0 AND pas.id_shop = 99
+            """
+            cursor.execute(query_reactivar)
+            atributos = cursor.fetchall()
+
+            if atributos:
+                ids = [str(row[0]) for row in atributos]
+                logging.info(f"🔄 Reactivando {len(ids)} atributos con stock en PrestaShop")
+                for row in atributos:
+                    logging.info(f"✔️ Atributo {row[0]} ({row[1]}) pasa a id_shop = 1")
+
+                placeholders = ','.join(['%s'] * len(ids))
+                query_update = f"""
+                    UPDATE ps_product_attribute_shop
+                    SET id_shop = 1
+                    WHERE id_product_attribute IN ({placeholders}) AND id_shop = 99
+                """
+                cursor.execute(query_update, ids)
+                conexion_prestashop.commit()
+            else:
+                logging.info("✅ No hay atributos con stock e id_shop = 99 para reactivar.")
+
+    except Exception as e:
+        conexion_prestashop.rollback()
+        logging.error(f"❌ Error al reactivar atributos con stock en PrestaShop: {e}")
 
 def descargar_y_procesar_archivo(config, excel_config, id_proveedor, conexion_proveedores):
     archivo_bytes = None

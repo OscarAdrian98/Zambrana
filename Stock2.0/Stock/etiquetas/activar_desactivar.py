@@ -114,7 +114,7 @@ def deactivate_attributes(connection, dataframe, batch_size=500):
 
     try:
         ps_product_attribute_df = dataframe[dataframe['table'] == 'ps_product_attribute']
-        ps_product_attribute_df = ps_product_attribute_df[ps_product_attribute_df['id_proveedor'].isin([8, 10])]
+        ps_product_attribute_df = ps_product_attribute_df[ps_product_attribute_df['id_proveedor'].isin([8, 9, 10])]
         references_and_stock = [(row['reference'], row['stock_combinado']) for index, row in ps_product_attribute_df.iterrows()]
         batches = [references_and_stock[i:i + batch_size] for i in range(0, len(references_and_stock), batch_size)]
 
@@ -241,6 +241,42 @@ def deactivate_attributes(connection, dataframe, batch_size=500):
             for id_product in products_to_update_available:
                 logging.info(f"available_for_order actualizado a 0 para el producto con id_product {id_product} ya que todos los id_shop están en 99.")
                 logger_funciones_especificas.info(f"available_for_order actualizado a 0 para el producto con id_product {id_product} ya que todos los id_shop están en 99.")
+
+        # 🟢 Verificación global: reactivar available_for_order para productos que tienen al menos un atributo con stock y activo
+        try:
+            query_reactivar = """
+                UPDATE ps_product p
+                INNER JOIN (
+                    SELECT pa.id_product
+                    FROM ps_product_attribute_shop pas
+                    INNER JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+                    INNER JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
+                    WHERE pas.id_shop = 1 AND sa.quantity > 0
+                    GROUP BY pa.id_product
+                ) activos ON p.id_product = activos.id_product
+                SET p.available_for_order = 1
+            """
+            cursor.execute(query_reactivar)
+
+            query_reactivar_shop = """
+                UPDATE ps_product_shop ps
+                INNER JOIN (
+                    SELECT pa.id_product
+                    FROM ps_product_attribute_shop pas
+                    INNER JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+                    INNER JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
+                    WHERE pas.id_shop = 1 AND sa.quantity > 0
+                    GROUP BY pa.id_product
+                ) activos ON ps.id_product = activos.id_product
+                SET ps.available_for_order = 1
+            """
+            cursor.execute(query_reactivar_shop)
+
+            logging.info("✅ Se ha asegurado available_for_order = 1 para productos con al menos un atributo activo y con stock.")
+            logger_funciones_especificas.info("✅ Se ha asegurado available_for_order = 1 para productos con al menos un atributo activo y con stock.")
+        except Exception as e:
+            logging.error(f"❌ Error al asegurar available_for_order = 1 para productos activos con stock: {e}")
+            logger_funciones_especificas.error(f"❌ Error al asegurar available_for_order = 1 para productos activos con stock: {e}")
 
         connection.commit()
 
