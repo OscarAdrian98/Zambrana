@@ -59,6 +59,9 @@ async def get_data(
         elif tipo == "stock":
             datos = obtener_stock_actual(familia, subfamilia, proveedor)
 
+        elif tipo == "stock_completo":
+            datos = obtener_stock_completo(familia, subfamilia, proveedor)
+
         else:
             logging.error(f"Error: Tipo de reporte no válido ({tipo}).")
             raise HTTPException(status_code=400, detail="Tipo de reporte no válido.")
@@ -198,6 +201,7 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
         INNER JOIN Artículos a ON fvl.[Artículo] = a.[Artículo]
         INNER JOIN FacturasVentaCab fvc ON fvl.[Serie] = fvc.[Serie] AND fvl.[Codigo] = fvc.[Codigo]
         WHERE fvl.FechaLin BETWEEN CONVERT(DATE, ?) AND CONVERT(DATE, ?)
+        AND a.StockSN = 'S'
         """
 
         parametros = [fecha_desde, fecha_hasta]
@@ -256,7 +260,7 @@ def obtener_ventas(fecha_desde, fecha_hasta, ventas="global", familia=None, subf
 
             fila = {
                 "serie": row[0] if ventas == "individual" else "",  # Solo en ventas individuales
-                "codigo": row[1] if ventas == "individual" else "",
+                "codigo": row[1] if ventas == "individual" else "", # Solo en ventas individuales
                 "refProducto": row[2] or "",
                 "nombreProducto": row[3] or "Sin nombre",
                 "cantidad_vendida": int(row[4]) if row[4] else 0,
@@ -627,6 +631,67 @@ def obtener_stock_actual(familia: Optional[str] = None, subfamilia: Optional[str
         "subfamilia": "",
         "proveedor": ""
     })
+
+    return stock_lista
+
+# Funcion para obetener el stock al completo con y sin stock
+def obtener_stock_completo(familia: Optional[str] = None, subfamilia: Optional[str] = None, proveedor: Optional[str] = None):
+    """
+    Obtiene TODOS los productos del Almacén 1, incluso con stock 0 o nulo, con opción de filtrar por Familia, SubFamilia y Proveedor.
+    """
+    query = """
+    SELECT 
+        s.[Artículo] AS refProducto, 
+        a.[Descripción] AS nombreProducto, 
+        s.StockUd1 AS stock_actual,
+        a.PrecioUltCompraEu AS precio_compra,
+        a.PVPGralSinIVAEu AS pvp_sin_iva,
+        a.Familia AS familia,
+        a.SubFamilia AS subfamilia,
+        a.Proveedor AS proveedor
+    FROM Stocks s
+    INNER JOIN Artículos a ON s.[Artículo] = a.[Artículo]
+    """
+
+    filtros = []
+    parametros = []
+
+    if familia:
+        filtros.append("a.Familia = ?")
+        parametros.append(familia)
+
+    if subfamilia:
+        filtros.append("a.SubFamilia = ?")
+        parametros.append(subfamilia)
+
+    if proveedor:
+        filtros.append("a.Proveedor = ?")
+        parametros.append(proveedor)
+
+    if filtros:
+        query += " AND " + " AND ".join(filtros)
+
+    logging.info(f"Ejecutando consulta STOCK COMPLETO con filtros: {parametros}")
+
+    resultados = ejecutar_consulta(query, tuple(parametros))
+    resultados = [r for r in resultados if r[0] and not str(r[0]).startswith("SC")]
+
+    if not resultados:
+        return []
+
+    stock_lista = [
+        {
+            "refProducto": row[0],
+            "nombreProducto": row[1],
+            "stock_actual": int(row[2]) if row[2] is not None else 0,
+            "precio_compra": f"{round(float(row[3]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[3] is not None else "0,00",
+            "pvp_sin_iva": f"{round(float(row[4]), 2):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if row[4] is not None else "0,00",
+            "familia": row[5] if row[5] else "",
+            "subfamilia": row[6] if row[6] else "",
+            "proveedor": row[7] if row[7] else ""
+        }
+        for row in resultados
+    ]
 
     return stock_lista
 
