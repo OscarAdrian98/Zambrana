@@ -1,6 +1,7 @@
 import logging
 import config.etiquetas
 from config.logging import logger_funciones_especificas
+import pandas as pd
 
 # Funcion para activar productos.
 def activate_products(connection, dataframe, batch_size=5000):
@@ -374,5 +375,167 @@ def update_id_shop_in_attribute_shop_supplier(connection, dataframe, batch_size=
         logging.error(f"Error durante la actualización de id_shop en ps_product_attribute_shop: {e}")
         logger_funciones_especificas.error(f"Error durante la actualización de id_shop en ps_product_attribute_shop: {e}")
 
+    finally:
+        cursor.close()
+
+# Función para desactivar atributos huerfanos.
+def desactivar_atributos_huerfanos_filtrando_marca(conexion_prestashop, conexion_proveedores, prestashop_df, id_proveedor):
+    cursor = conexion_prestashop.cursor()
+
+    try:
+        # 1. Obtener combinaciones con marca y stock desde PrestaShop
+        query_prestashop = """
+            SELECT
+                pa.id_product_attribute,
+                pa.reference,
+                pa.ean13,
+                pa.id_product,
+                sa.quantity,
+                m.name AS marca
+            FROM ps_product_attribute pa
+            JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute
+            JOIN ps_product p ON pa.id_product = p.id_product
+            LEFT JOIN ps_manufacturer m ON p.id_manufacturer = m.id_manufacturer
+            WHERE pa.reference IS NOT NULL AND pa.reference <> ''
+        """
+        atributos_df = pd.read_sql(query_prestashop, conexion_prestashop)
+        atributos_df['reference'] = atributos_df['reference'].astype(str)
+        atributos_df['ean13'] = atributos_df['ean13'].astype(str)
+
+        # 2. Obtener referencias y eans del proveedor actual
+        query_proveedor = """
+            SELECT referencia_producto, ean_producto
+            FROM productos
+            WHERE id_proveedor = %s
+        """
+        proveedor_df = pd.read_sql(query_proveedor, conexion_proveedores, params=(id_proveedor,))
+        proveedor_df['referencia_producto'] = proveedor_df['referencia_producto'].astype(str)
+        proveedor_df['ean_producto'] = proveedor_df['ean_producto'].astype(str)
+
+        referencias_proveedor = set(proveedor_df['referencia_producto'])
+        eans_proveedor = set(proveedor_df['ean_producto'])
+
+        # 3. Obtener marcas sincronizadas con ese proveedor
+        query_marcas = """
+            SELECT m.nombre_marca
+            FROM marcas_proveedores mp
+            JOIN marcas m ON mp.id_marca = m.id_marca
+            WHERE mp.id_proveedor = %s
+        """
+        marcas_df = pd.read_sql(query_marcas, conexion_proveedores, params=(id_proveedor,))
+        marcas_sincronizadas = set(marcas_df['nombre_marca'].str.lower())
+
+        # 4. Filtrar atributos sin stock, marca sincronizada, y no presentes en proveedor
+        atributos_df = atributos_df[
+            (atributos_df['quantity'] <= 0) &
+            (atributos_df['marca'].str.lower().isin(marcas_sincronizadas)) &
+            (~atributos_df['reference'].isin(referencias_proveedor)) &
+            (~atributos_df['ean13'].isin(eans_proveedor))
+        ]
+
+        if atributos_df.empty:
+            logging.info(f"✅ No hay atributos huérfanos a desactivar para proveedor {id_proveedor}.")
+            return
+
+        # 5. Filtrar solo los que todavía están activos (id_shop ≠ valor de desactivación)
+        ids_posibles = tuple(atributos_df['id_product_attribute'].tolist())
+        placeholders = ', '.join(['%s'] * len(ids_posibles))
+        query_estado = f"""
+            SELECT id_product_attribute
+            FROM ps_product_attribute_shop
+            WHERE id_product_attribute IN ({placeholders})
+            AND id_shop != %s
+        """
+        cursor.execute(query_estado, ids_posibles + (config.etiquetas.desactivar_atributo,))
+        ids_activos_a_desactivar = [row[0] for row in cursor.fetchall()]
+
+        if not ids_activos_a_desactivar:
+            logging.info(f"✅ Todos los atributos ya estaban desactivados para proveedor {id_proveedor}.")
+            return
+
+        # Filtrar atributos_df con esos ID
+        atributos_df = atributos_df[atributos_df['id_product_attribute'].isin(ids_activos_a_desactivar)]
+        ids_productos = atributos_df['id_product'].dropna().unique().tolist()
+
+        # 6. Desactivar en ps_product_attribute_shop
+        placeholders = ', '.join(['%s'] * len(ids_activos_a_desactivar))
+        cursor.execute(f"""
+            UPDATE ps_product_attribute_shop
+            SET id_shop = {config.etiquetas.desactivar_atributo}
+            WHERE id_product_attribute IN ({placeholders})
+        """, tuple(ids_activos_a_desactivar))
+
+        # 7. Limpiar cache_default_attribute
+        if ids_productos:
+            placeholders_prod = ', '.join(['%s'] * len(ids_productos))
+            cursor.execute(f"""
+                UPDATE ps_product_shop
+                SET cache_default_attribute = NULL
+                WHERE id_product IN ({placeholders_prod})
+            """, tuple(ids_productos))
+
+            cursor.execute(f"""
+                UPDATE ps_product
+                SET cache_default_attribute = NULL
+                WHERE id_product IN ({placeholders_prod})
+            """, tuple(ids_productos))
+
+        conexion_prestashop.commit()
+
+        for ref in atributos_df['reference']:
+            logging.info(f"🚫 Atributo desactivado por proveedor {id_proveedor}: {ref}")
+            logger_funciones_especificas.info(f"🚫 Atributo desactivado por proveedor {id_proveedor}: {ref}")
+
+        logging.info(f"✅ Se han desactivado {len(ids_activos_a_desactivar)} atributos huérfanos para proveedor {id_proveedor}")
+
+    except Exception as e:
+        conexion_prestashop.rollback()
+        logging.error(f"❌ Error al desactivar atributos huérfanos por proveedor {id_proveedor}: {e}")
+        logger_funciones_especificas.error(f"❌ Error al desactivar atributos huérfanos por proveedor {id_proveedor}: {e}")
+    finally:
+        cursor.close()
+
+# Función para activar todos los atributos desactivados como emergencia.
+def reactivar_todos_los_atributos_desactivados(conexion_prestashop):
+    cursor = conexion_prestashop.cursor()
+
+    try:
+        # 1. Obtener atributos actualmente desactivados (id_shop = 99)
+        query = """
+            SELECT pa.id_product_attribute, pa.reference
+            FROM ps_product_attribute_shop pas
+            JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+            WHERE pas.id_shop = 99
+        """
+        cursor.execute(query)
+        resultados = cursor.fetchall()
+
+        if not resultados:
+            logging.info("✅ No hay atributos desactivados con id_shop = 99.")
+            return
+
+        ids_atributos = [row[0] for row in resultados]
+        referencias = [row[1] for row in resultados]
+
+        # 2. Reactivar atributos: poner id_shop = 1
+        placeholders = ', '.join(['%s'] * len(ids_atributos))
+        query_update = f"""
+            UPDATE ps_product_attribute_shop
+            SET id_shop = 1
+            WHERE id_product_attribute IN ({placeholders})
+        """
+        cursor.execute(query_update, tuple(ids_atributos))
+
+        conexion_prestashop.commit()
+
+        for ref in referencias:
+            logging.info(f"🔄 Atributo reactivado: {ref}")
+            logger_funciones_especificas.info(f"🔄 Atributo reactivado: {ref}")
+
+        logging.info(f"✅ Se han reactivado {len(ids_atributos)} atributos anteriormente desactivados.")
+    except Exception as e:
+        conexion_prestashop.rollback()
+        logging.error(f"❌ Error al reactivar atributos desactivados: {e}")
+        logger_funciones_especificas.error(f"❌ Error al reactivar atributos desactivados: {e}")
     finally:
         cursor.close()

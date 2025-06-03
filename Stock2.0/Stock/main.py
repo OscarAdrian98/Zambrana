@@ -5,13 +5,14 @@ from config.configuracion_proveedor import obtener_configuraciones_proveedor
 from procesamiento.procesar_contenido import descargar_y_procesar_archivo, procesar_archivo_excel, actualizar_base_datos, verificar_referencias_no_actualizadas
 from procesamiento.tablas_auxiliares import crear_tabla_aux_prestashop, crear_tabla_aux_proveedor, comparar_tablas_auxiliares, eliminar_tablas_auxiliares, detectar_referencias_huerfanas_para_desactivar
 from etiquetas.etiquetas import update_labels, update_additional_delivery_times_supplier, update_product_labels, update_additional_delivery_times, update_additional_delivery_times_attribute, actualizar_fecha_disponibilidad
-from etiquetas.activar_desactivar import activate_products, activate_simple_products_from_supplier, deactivate_attributes
+from etiquetas.activar_desactivar import activate_products, activate_simple_products_from_supplier, deactivate_attributes, desactivar_atributos_huerfanos_filtrando_marca, reactivar_todos_los_atributos_desactivados
 from tqdm import tqdm
 from config.logging import borrar_archivo_log, logger_funciones_especificas
 import time
 import pandas as pd
 
 # Lista de Proveedores:
+# Corver: 2
 # Mundo Talio: 3
 # Parts Europe: 5
 # Acerbis: 7
@@ -29,11 +30,11 @@ import pandas as pd
 # X-grip: 19
 # Racing: 20
 # Technical: 21
-# Polisport: 22
+# PoliSport: 22
 
 def main():
     start_time = time.time()
-    id_proveedores = []  # Ajusta la lista según tus necesidades
+    id_proveedores = [2, 3, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]  # Ajusta la lista según tus necesidades
     conexiones = []
     error_occurred = False
 
@@ -87,7 +88,7 @@ def main():
                         )
 
                         if df_procesado is not None:
-                            print("DATAFRAME MAIN:", df_procesado)
+                            #print("DATAFRAME MAIN:", df_procesado)
                             actualizar_base_datos(
                                 df_procesado, id_proveedor, configuracion_excel['id_marca'],
                                 conexion_proveedores, conexion_prestashop
@@ -107,7 +108,7 @@ def main():
 
                             # Comparar tablas auxiliares
                             df_fusionado = comparar_tablas_auxiliares(prestashop_df, proveedor_df)
-                            print("DATAFRAME FUSIONADO:", df_fusionado)
+                            #print("DATAFRAME FUSIONADO:", df_fusionado)
 
                             if df_fusionado is not None and not df_fusionado.empty:
                                 # Renombrar columna 'source' a 'table' y agregar columna 'id_proveedor'
@@ -137,6 +138,13 @@ def main():
                                     activate_simple_products_from_supplier(conexion_prestashop, df_fusionado, batch_size=5000)
                                     actualizar_fecha_disponibilidad(conexion_prestashop, df_fusionado, batch_size=5000)
                                     deactivate_attributes(conexion_prestashop, df_fusionado, batch_size=5000)
+                                    if id_proveedor in [8, 9, 10]:
+                                        desactivar_atributos_huerfanos_filtrando_marca(
+                                            conexion_prestashop=conexion_prestashop,
+                                            conexion_proveedores=conexion_proveedores,
+                                            prestashop_df=prestashop_df,
+                                            id_proveedor=id_proveedor
+                                        )
                                     pbar.update(df_fusionado.shape[0])
 
                             else:
@@ -165,6 +173,10 @@ def main():
         except Exception as e:
             logging.error(f"❌ Error al detectar/desactivar productos huérfanos: {e}")
             logger_funciones_especificas.error(f"❌ Error al detectar/desactivar productos huérfanos: {e}")
+
+        # ✅ Reactivar todos los atributos desactivados (solo usar cuando sea necesario)
+        # ⚠️ Descomenta la línea siguiente SOLO cuando quieras reactivar todos los atributos
+        #reactivar_todos_los_atributos_desactivados(conexion_prestashop)
 
         # ✅ Eliminar la tabla auxiliar de PrestaShop después de terminar con todos los proveedores
         eliminar_tablas_auxiliares(conexion_prestashop, 'tabla_aux_prestashop')
