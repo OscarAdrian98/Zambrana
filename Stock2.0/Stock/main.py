@@ -5,7 +5,7 @@ from config.configuracion_proveedor import obtener_configuraciones_proveedor
 from procesamiento.procesar_contenido import descargar_y_procesar_archivo, procesar_archivo_excel, actualizar_base_datos, verificar_referencias_no_actualizadas
 from procesamiento.tablas_auxiliares import crear_tabla_aux_prestashop, crear_tabla_aux_proveedor, comparar_tablas_auxiliares, eliminar_tablas_auxiliares, detectar_referencias_huerfanas_para_desactivar
 from etiquetas.etiquetas import update_labels, update_additional_delivery_times_supplier, update_product_labels, update_additional_delivery_times, update_additional_delivery_times_attribute, actualizar_fecha_disponibilidad
-from etiquetas.activar_desactivar import activate_products, activate_simple_products_from_supplier, deactivate_attributes, desactivar_atributos_huerfanos_filtrando_marca, reactivar_todos_los_atributos_desactivados
+from etiquetas.activar_desactivar import activate_products, activate_simple_products_from_supplier, deactivate_attributes, desactivar_atributos_huerfanos_filtrando_marca, reactivar_todos_los_atributos_desactivados, reactivar_atributos_con_stock
 from tqdm import tqdm
 from config.logging import borrar_archivo_log, logger_funciones_especificas
 import time
@@ -145,6 +145,11 @@ def main():
                                             prestashop_df=prestashop_df,
                                             id_proveedor=id_proveedor
                                         )
+                                    reactivar_atributos_con_stock(
+                                        conexion_prestashop=conexion_prestashop,
+                                        conexion_proveedores=conexion_proveedores,
+                                        id_proveedor=id_proveedor
+                                    )
                                     pbar.update(df_fusionado.shape[0])
 
                             else:

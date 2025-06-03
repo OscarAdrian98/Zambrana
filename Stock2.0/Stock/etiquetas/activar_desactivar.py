@@ -480,6 +480,40 @@ def desactivar_atributos_huerfanos_filtrando_marca(conexion_prestashop, conexion
                 WHERE id_product IN ({placeholders_prod})
             """, tuple(ids_productos))
 
+        # 🔒 Verificar si algún producto tiene ya todos sus atributos desactivados
+        productos_a_ocultar = set()
+        for id_producto in ids_productos:
+            cursor.execute("""
+                SELECT COUNT(*) AS total, 
+                       SUM(CASE WHEN id_shop = %s THEN 1 ELSE 0 END) AS total_desactivados
+                FROM ps_product_attribute_shop
+                WHERE id_product IN (
+                    SELECT id_product
+                    FROM ps_product_attribute
+                    WHERE id_product = %s
+                )
+            """, (config.etiquetas.desactivar_atributo, id_producto))
+            total, total_desactivados = cursor.fetchone()
+
+            if total == total_desactivados:
+                productos_a_ocultar.add(id_producto)
+
+        if productos_a_ocultar:
+            placeholders_ocultar = ', '.join(['%s'] * len(productos_a_ocultar))
+            cursor.execute(f"""
+                UPDATE ps_product
+                SET available_for_order = 0, visibility = 'none'
+                WHERE id_product IN ({placeholders_ocultar})
+            """, tuple(productos_a_ocultar))
+            cursor.execute(f"""
+                UPDATE ps_product_shop
+                SET available_for_order = 0, visibility = 'none'
+                WHERE id_product IN ({placeholders_ocultar})
+            """, tuple(productos_a_ocultar))
+            logging.info(f"🔒 {len(productos_a_ocultar)} productos ocultados y bloqueados para compra por no tener atributos activos.")
+            for pid in productos_a_ocultar:
+                logger_funciones_especificas.info(f"🔒 Producto {pid} ocultado y bloqueado para compra.")
+
         conexion_prestashop.commit()
 
         for ref in atributos_df['reference']:
@@ -537,5 +571,92 @@ def reactivar_todos_los_atributos_desactivados(conexion_prestashop):
         conexion_prestashop.rollback()
         logging.error(f"❌ Error al reactivar atributos desactivados: {e}")
         logger_funciones_especificas.error(f"❌ Error al reactivar atributos desactivados: {e}")
+    finally:
+        cursor.close()
+
+# Función para activar atributos que tengan stock.
+def reactivar_atributos_con_stock(conexion_prestashop, conexion_proveedores, id_proveedor):
+
+    cursor = conexion_prestashop.cursor()
+
+    try:
+        # 1. Obtener atributos desactivados (id_shop = 99)
+        query_desactivados = '''
+            SELECT pa.id_product_attribute, pa.reference, pa.ean13, pa.id_product, sa.quantity
+            FROM ps_product_attribute_shop pas
+            JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+            LEFT JOIN ps_stock_available sa ON pa.id_product_attribute = sa.id_product_attribute AND sa.id_shop = 1
+            WHERE pas.id_shop = 99
+        '''
+        df_atributos = pd.read_sql(query_desactivados, conexion_prestashop)
+        df_atributos['reference'] = df_atributos['reference'].astype(str)
+        df_atributos['ean13'] = df_atributos['ean13'].astype(str)
+
+        if df_atributos.empty:
+            logging.info("✅ No hay atributos desactivados para verificar stock.")
+            return
+
+        # 2. Obtener referencias/eans del proveedor con stock
+        query_stock_proveedor = """
+            SELECT referencia_producto, ean_producto
+            FROM productos
+            WHERE id_proveedor = %s AND hay_stock_producto > 0
+        """
+        df_proveedor = pd.read_sql(query_stock_proveedor, conexion_proveedores, params=(id_proveedor,))
+        df_proveedor['referencia_producto'] = df_proveedor['referencia_producto'].astype(str)
+        df_proveedor['ean_producto'] = df_proveedor['ean_producto'].astype(str)
+
+        referencias_stock = set(df_proveedor['referencia_producto'])
+        eans_stock = set(df_proveedor['ean_producto'])
+
+        # 3. Filtrar atributos con stock en PrestaShop o en proveedor
+        df_filtrado = df_atributos[
+            (df_atributos['quantity'] > 0) |
+            (df_atributos['reference'].isin(referencias_stock)) |
+            (df_atributos['ean13'].isin(eans_stock))
+        ]
+
+        if df_filtrado.empty:
+            logging.info("✅ No hay atributos desactivados con stock para reactivar.")
+            return
+
+        ids_atributos = df_filtrado['id_product_attribute'].tolist()
+        ids_productos = df_filtrado['id_product'].unique().tolist()
+
+        # 4. Reactivar los atributos (id_shop = 1)
+        placeholders = ', '.join(['%s'] * len(ids_atributos))
+        cursor.execute(f"""
+            UPDATE ps_product_attribute_shop
+            SET id_shop = 1
+            WHERE id_product_attribute IN ({placeholders})
+        """, tuple(ids_atributos))
+
+        # 5. Reactivar productos y permitir compra
+        if ids_productos:
+            placeholders_prod = ', '.join(['%s'] * len(ids_productos))
+            cursor.execute(f"""
+                UPDATE ps_product
+                SET available_for_order = 1, visibility = 'both'
+                WHERE id_product IN ({placeholders_prod})
+            """, tuple(ids_productos))
+
+            cursor.execute(f"""
+                UPDATE ps_product_shop
+                SET available_for_order = 1, visibility = 'both'
+                WHERE id_product IN ({placeholders_prod})
+            """, tuple(ids_productos))
+
+        conexion_prestashop.commit()
+
+        for ref in df_filtrado['reference']:
+            logging.info(f"🔄 Atributo reactivado: {ref}")
+            logger_funciones_especificas.info(f"🔄 Atributo reactivado: {ref}")
+
+        logging.info(f"✅ Se han reactivado {len(ids_atributos)} atributos con stock para proveedor {id_proveedor}.")
+
+    except Exception as e:
+        conexion_prestashop.rollback()
+        logging.error(f"❌ Error al reactivar atributos con stock: {e}")
+        logger_funciones_especificas.error(f"❌ Error al reactivar atributos con stock: {e}")
     finally:
         cursor.close()

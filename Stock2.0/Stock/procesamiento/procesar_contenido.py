@@ -331,7 +331,7 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
 
     try:
-        # 1️⃣ Obtener referencias no actualizadas hoy en la tabla 'productos'
+        # 1️⃣ Obtener referencias no actualizadas hoy
         with conexion_proveedores.cursor() as cursor:
             cursor.execute("""
                 SELECT referencia_producto
@@ -344,52 +344,83 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
             logging.info("✅ Todas las referencias están actualizadas hoy.")
             return
 
-        # 2️⃣ Convertir listas a sets para comparar en bloque
-        referencias_set = set(referencias_no_actualizadas)
-        proveedor_set = set(proveedor_df['referencia'].astype(str))
-        prestashop_set = set(prestashop_df['reference'].astype(str))
+        # 2️⃣ Convertir a sets y filtrar
+        referencias_no_hoy = set(referencias_no_actualizadas)
+        referencias_fichero = set(proveedor_df['referencia'].astype(str))
+        referencias_prestashop_sin_stock = set(
+            prestashop_df[prestashop_df['quantity'] <= 0]['reference'].astype(str)
+        )
 
-        referencias_faltantes = referencias_set - proveedor_set
+        # 3️⃣ Criterio final: no actualizada hoy + no está en fichero + sin stock en PrestaShop
+        referencias_a_cero = list(
+            (referencias_no_hoy - referencias_fichero) & referencias_prestashop_sin_stock
+        )
 
-        actualizar_a_0 = list(referencias_faltantes - prestashop_set)
-        actualizar_a_1 = list(referencias_faltantes & prestashop_set)
+        for ref in referencias_a_cero:
+            logging.info(f"🔴 {ref} → stock = 0 (no llegó del proveedor, no se actualizó hoy y sin stock en PrestaShop)")
 
-        for ref in actualizar_a_0:
-            logging.info(f"🔴 {ref} → stock = 0 (no llegó del proveedor ni está en PrestaShop)")
+        # 4️⃣ Actualizar stock = 0 en la base de datos del proveedor
+        if referencias_a_cero:
+            placeholders = ','.join(['%s'] * len(referencias_a_cero))
+            query_update = f"""
+                UPDATE productos
+                SET stock_txt_producto = '0', hay_stock_producto = '0'
+                WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
+            """
+            with conexion_proveedores.cursor() as cursor:
+                cursor.execute(query_update, (id_proveedor, id_marca, *referencias_a_cero))
+                conexion_proveedores.commit()
+                logging.info(f"🔻 {len(referencias_a_cero)} referencias actualizadas a stock = 0")
 
-        for ref in actualizar_a_1:
-            logging.info(f"🟡 {ref} → stock = 1 (no llegó del proveedor pero está en PrestaShop)")
+            # 5️⃣ Desactivar atributos en PrestaShop si aún están activos y no tienen stock
+            query_get_ids = f"""
+                SELECT pa.id_product_attribute, pa.reference, pa.id_product
+                FROM ps_product_attribute pa
+                JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
+                JOIN ps_product_attribute_shop pas ON pa.id_product_attribute = pas.id_product_attribute
+                WHERE pa.reference IN ({placeholders}) AND sa.quantity <= 0 AND pas.id_shop != 99
+            """
+            with conexion_prestashop.cursor() as cursor:
+                cursor.execute(query_get_ids, referencias_a_cero)
+                atributos_a_desactivar = cursor.fetchall()
 
-        with conexion_proveedores.cursor() as cursor:
-            # 3️⃣ Actualizar a 0
-            if actualizar_a_0:
-                placeholders = ','.join(['%s'] * len(actualizar_a_0))
-                query_0 = f"""
-                    UPDATE productos
-                    SET stock_txt_producto = '0', hay_stock_producto = '0'
-                    WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
-                """
-                cursor.execute(query_0, (id_proveedor, id_marca, *actualizar_a_0))
-                logging.info(f"🔻 {len(actualizar_a_0)} referencias actualizadas a stock = 0")
+            if atributos_a_desactivar:
+                ids_a_desactivar = [row[0] for row in atributos_a_desactivar]
+                ids_productos_afectados = list(set(row[2] for row in atributos_a_desactivar))
 
-            # 4️⃣ Actualizar a 1
-            if actualizar_a_1:
-                placeholders = ','.join(['%s'] * len(actualizar_a_1))
-                query_1 = f"""
-                    UPDATE productos
-                    SET hay_stock_producto = '1'
-                    WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
-                """
-                cursor.execute(query_1, (id_proveedor, id_marca, *actualizar_a_1))
-                logging.info(f"🟢 {len(actualizar_a_1)} referencias marcadas con hay_stock_producto = 1")
+                logging.info(f"🚫 Desactivando {len(ids_a_desactivar)} atributos en PrestaShop por no actualizarse y sin stock")
 
-            conexion_proveedores.commit()
+                placeholders_ids = ','.join(['%s'] * len(ids_a_desactivar))
+                with conexion_prestashop.cursor() as cursor:
+                    cursor.execute(f"""
+                        UPDATE ps_product_attribute_shop
+                        SET id_shop = 99
+                        WHERE id_product_attribute IN ({placeholders_ids})
+                    """, ids_a_desactivar)
+
+                    if ids_productos_afectados:
+                        placeholders_prod = ','.join(['%s'] * len(ids_productos_afectados))
+                        cursor.execute(f"""
+                            UPDATE ps_product
+                            SET cache_default_attribute = NULL
+                            WHERE id_product IN ({placeholders_prod})
+                        """, ids_productos_afectados)
+                        cursor.execute(f"""
+                            UPDATE ps_product_shop
+                            SET cache_default_attribute = NULL
+                            WHERE id_product IN ({placeholders_prod})
+                        """, ids_productos_afectados)
+
+                    conexion_prestashop.commit()
+
+                for row in atributos_a_desactivar:
+                    logging.info(f"❌ Atributo {row[1]} desactivado automáticamente.")
 
     except Exception as e:
         conexion_proveedores.rollback()
         logging.error(f"❌ Error durante verificación de referencias: {e}")
 
-    # 5️⃣ Reactivar atributos con stock si están en id_shop = 99
+    # 6️⃣ Reactivar atributos con stock si están en id_shop = 99
     try:
         with conexion_prestashop.cursor() as cursor:
             query_reactivar = """
