@@ -4,13 +4,19 @@ import openpyxl
 from deep_translator import GoogleTranslator
 from bd.bd import DatabaseConnector
 import logging
+from functools import lru_cache
 
 # Configuración de logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+file_handler = logging.FileHandler('servidor.log', encoding='utf-8')
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(file_handler)
 logger = logging.getLogger(__name__)
+
 
 def letra_a_numero(letra):
     """Convierte una letra de columna Excel (A, B, C, etc.) a su índice numérico (0, 1, 2, etc.)"""
@@ -18,6 +24,23 @@ def letra_a_numero(letra):
     for i, c in enumerate(reversed(letra.upper())):
         resultado += (ord(c) - ord('A') + 1) * (26 ** i)
     return resultado - 1
+
+# Definir la función global decorada con @lru_cache
+@lru_cache(maxsize=1000)
+def traducir_texto_con_cache(texto_str):
+    """
+    Traduce el texto usando Google Translator con caché global.
+    """
+    try:
+        translator = GoogleTranslator(source='auto', target='es')
+        return translator.translate(texto_str)
+    except Exception as e:
+        logger.warning(f"Error al traducir '{texto_str}': {str(e)}")
+        return texto_str  # Devuelve el texto original en caso de error
+    
+# Ver el uso de la caché
+logger.info(f"Caché hits: {traducir_texto_con_cache.cache_info().hits}")
+logger.info(f"Caché misses: {traducir_texto_con_cache.cache_info().misses}")
 
 # Definir diccionario de plantillas
 plantillas = {
@@ -72,96 +95,122 @@ plantillas = {
         'PVP S/IVA': 'F',
         'P.COMPRA': 'H',
         'CATEGORIA': 'E'
+    },
+    'UFO': {
+        'REF': 'A',
+        'EAN': 'B',
+        'CATEGORIA': 'C',
+        'NOMBRE': 'D',
+        'GAMA': 'D',
+        'COLOR': 'E',
+        'TALLA': 'F',
+        'P.COMPRA': 'G',
+        'PVP S/IVA': 'H',
+        'PVP +IVA': 'I'
+    },
+    'UFO PLASTICS': {
+        'REF': 'A',
+        'NOMBRE': 'H',
+        'TIPO PRODUCT': 'G',
+        'MARCA MOTO': 'C',
+        'PVP S/IVA': 'K',
+        'PVP +IVA': 'L',
+        'COLOR': 'I',
+        'EAN': 'B',
+        'AÑO DESDE': 'E',
+        'AÑO HASTA': 'F',
+        'MODELO': 'D'
     }
 }
 
-def procesar_referencias_no_encontradas(df_mapeado, referencias_no_encontradas):
+def procesar_referencias_no_encontradas(df_mapeado, referencias_no_encontradas, plantilla_seleccionada):
     """
-    Procesa las referencias no encontradas y las retorna en un DataFrame separado.
+    Procesa las referencias no encontradas y las retorna en la plantilla provisional.
     """
     try:
-        
+        # Inicializar traductor
+        translator = GoogleTranslator(source='auto', target='es')
+
         # Función para formatear precios
         def formatear_precio(precio):
             if precio is not None and str(precio).strip() and str(precio).strip().lower() != 'nan':
                 try:
-                    # Eliminar símbolos de moneda y espacios
                     precio_limpio = str(precio).replace('€', '').replace(',', '.').strip()
                     return str(round(float(precio_limpio), 2)).replace('.', ',')
                 except ValueError as e:
                     logger.warning(f"Error al formatear precio '{precio}': {str(e)}")
-                    return ''  # Retornar cadena vacía si no se puede formatear
+                    return ''
             return ''
-        
-        # Inicializar el traductor
-        translator = GoogleTranslator(source='auto', target='es')
-        
+
+        def traducir_seguro(texto):
+            """
+            Traduce el texto usando traducir_texto_con_cache para manejar valores nulos o vacíos.
+            """
+            if pd.isna(texto) or str(texto).strip() == '':
+                return texto
+
+            texto_str = str(texto).strip()
+            return traducir_texto_con_cache(texto_str)
+
+        # Verificar si la plantilla seleccionada tiene los campos para concatenar
+        campos_para_concatenar = ['MARCA MOTO', 'MODELO', 'AÑO DESDE', 'AÑO HASTA']
+        concatenar_nombre = all(campo in plantillas[plantilla_seleccionada] for campo in campos_para_concatenar)
+
+        # Crear DataFrame con columnas de la plantilla provisional
+        columnas_provisional = [
+            'REF MADRE', 'REF', 'EAN', 'NOMBRE', 'TIPO PRODUCT', 'P.COMPRA', 
+            'PVP S/IVA', 'PVP +IVA', 'COLOR', 'CATEGORIA', 'PESO', 'COD NC', 
+            'ANCHURA', 'ALTURA', 'PROFUNDIDAD', 'GENERO', 'EDAD', 'TALLA', 
+            'TEMPORADA', 'GAMA', 'MARCA', 'IMG'
+        ]
+        df_provisional = pd.DataFrame(columns=columnas_provisional)
+
         # Filtrar referencias no encontradas
         df_no_encontradas = df_mapeado[df_mapeado['REF'].isin(referencias_no_encontradas)].copy()
-        
+
         if not df_no_encontradas.empty:
-            # Función para traducir texto de manera segura
-            def traducir_seguro(texto):
-                if pd.isna(texto) or str(texto).strip() == '':
-                    return texto
-                try:
-                    texto_str = str(texto).strip()
-                    traduccion = translator.translate(texto_str)
-                    return traduccion
-                except Exception as e:
-                    logger.warning(f"Error al traducir '{texto}': {str(e)}")
-                    return texto
-            
-            # Traducir columnas especificadas
-            columnas_a_traducir = ['NOMBRE', 'COLOR', 'CATEGORIA']
-            for columna in columnas_a_traducir:
-                if columna in df_no_encontradas.columns:
-                    logger.info(f"Traduciendo columna: {columna}")
-                    df_no_encontradas[columna] = df_no_encontradas[columna].apply(traducir_seguro)
-            
-            # Crear DataFrame con las mismas columnas que el original
-            columnas_finales = [
-                'REF MADRE', 'EAN PRODUCT', 'NOMBRE (SIN TALLA)', 'MARCA', 'PVP +IVA', 
-                'ID IVA', 'PRODUCT CATEGORIA', 'CATEGORIAS', 'CARACTERISTICAS', 'GAMA',
-                'FILTROS', 'PRODUCT', 'META-DESCRIPCION', 'URL IMGs', 'ELIMINAR IMG',
-                'DESCRIPCION LARGA', 'ANCHURA', 'ALTURA', 'PROFUNDIDAD', 'PESO PRODUCT',
-                'ID DISPONIBILIDAD', 'ACTIVO', 'DISP. PEDIDOS', 'TEMPORADA',
-                'TALLAS', 'GENERO', 'EDAD', 'COLOR', 'REF MADRE COMBI', 'REF COMBI',
-                'EAN COMBI', 'NOMBRE COMBI:TIPO', '|', 'REF', 'NOMBRE', 'PROVEEDOR', 'FAMILIA',
-                'SUBFAMILIA', 'P.COMPRA', 'PVP (+IVA)', 'EAN', 'ALT 1', 'ALT 2', 'ALT 3',
-                'UNIDAD', 'LOTE', 'PESO', 'CODNC', 'LIBRE1=MARCA', 'LIBRE2=TEMPORADA',
-                'LIBRE3=PRODUCTO', 'LIBRE4=GAMA/MODELO', 'LIBRE5=GRUPO'
-            ]
-            
-            df_resultado = pd.DataFrame(columns=columnas_finales)
-            
-            # Mapear los datos de las referencias no encontradas
+            # Procesar cada fila
             for _, fila in df_no_encontradas.iterrows():
-                nueva_fila = pd.Series('', index=columnas_finales)
-                nueva_fila['REF'] = fila['REF']
-                nueva_fila['NOMBRE'] = fila['NOMBRE'] if 'NOMBRE' in fila else ''
-                nueva_fila['COLOR'] = fila['COLOR'] if 'COLOR' in fila else ''
-                nueva_fila['PRODUCT CATEGORIA'] = fila['CATEGORIA'] if 'CATEGORIA' in fila else ''
-                nueva_fila['EAN'] = fila['EAN'] if 'EAN' in fila else ''
-                
+                nueva_fila = pd.Series('', index=columnas_provisional)
+
+                # Copiar datos básicos
+                for columna in columnas_provisional:
+                    if columna in fila:
+                        nueva_fila[columna] = fila[columna]
+
+                # Concatenar "MARCA MOTO", "MODELO", "AÑO DESDE", "AÑO HASTA" en NOMBRE si aplica
+                if concatenar_nombre:
+                    partes = []
+                    for campo in ['NOMBRE', 'MARCA MOTO', 'MODELO']:
+                        valor = fila.get(campo)
+                        if pd.notna(valor) and valor != '':
+                            partes.append(str(valor).strip())
+
+                    # Concatenar años solo si ambos existen
+                    ano_desde = fila.get('AÑO DESDE')
+                    ano_hasta = fila.get('AÑO HASTA')
+                    if pd.notna(ano_desde) and pd.notna(ano_hasta) and ano_desde != '' and ano_hasta != '':
+                        partes.append(f"{str(ano_desde).strip()}-{str(ano_hasta).strip()}")
+
+                    # Construir el nombre concatenado
+                    nueva_fila['NOMBRE'] = ' '.join(partes)
+
+                # Traducir las columnas especificadas
+                columnas_a_traducir = ['NOMBRE', 'TIPO PRODUCT', 'COLOR', 'CATEGORIA']
+                for columna in columnas_a_traducir:
+                    if columna in nueva_fila and pd.notna(nueva_fila[columna]):
+                        nueva_fila[columna] = traducir_seguro(nueva_fila[columna])
+
                 # Formatear precios
-                nueva_fila['P.COMPRA'] = formatear_precio(fila['P.COMPRA']) if 'P.COMPRA' in fila else ''
-                nueva_fila['PVP S/IVA'] = formatear_precio(fila['PVP S/IVA']) if 'PVP S/IVA' in fila else ''
-                nueva_fila['PVP (+IVA)'] = formatear_precio(fila['PVP +IVA']) if 'PVP +IVA' in fila else ''
-                
-                nueva_fila['PESO'] = fila['PESO'] if 'PESO' in fila else ''
-                nueva_fila['CODNC'] = fila['COD NC'] if 'COD NC' in fila else ''
-                nueva_fila['ANCHURA'] = fila['ANCHURA'] if 'ANCHURA' in fila else ''
-                nueva_fila['ALTURA'] = fila['ALTURA'] if 'ALTURA' in fila else ''
-                nueva_fila['PROFUNDIDAD'] = fila['PROFUNDIDAD'] if 'PROFUNDIDAD' in fila else ''
-                nueva_fila['URL IMGs'] = fila['IMG'] if 'IMG' in fila else ''
-                
-                df_resultado = pd.concat([df_resultado, nueva_fila.to_frame().T], ignore_index=True)
-            
-            return df_resultado
-            
-        return None
-            
+                nueva_fila['P.COMPRA'] = formatear_precio(fila.get('P.COMPRA', ''))
+                nueva_fila['PVP S/IVA'] = formatear_precio(fila.get('PVP S/IVA', ''))
+                nueva_fila['PVP +IVA'] = formatear_precio(fila.get('PVP +IVA', ''))
+
+                # Añadir la nueva fila al DataFrame provisional
+                df_provisional = pd.concat([df_provisional, nueva_fila.to_frame().T], ignore_index=True)
+
+        return df_provisional if not df_provisional.empty else None
+
     except Exception as e:
         logger.error(f"Error procesando referencias no encontradas: {str(e)}")
         raise
@@ -193,7 +242,7 @@ def consultar_ambar(datos_mapeados_stream):
         
         # Definir columnas finales
         columnas_finales = [
-            'REF MADRE', 'EAN PRODUCT', 'NOMBRE (SIN TALLA)', 'MARCA', 'PVP +IVA', 
+            'REF MADRE', 'EAN PRODUCT', 'NOMBRE (SIN TALLA)', 'MARCA', 'PVP S/IVA', 
             'ID IVA', 'PRODUCT CATEGORIA', 'CATEGORIAS', 'CARACTERISTICAS', 'GAMA',
             'FILTROS', 'PRODUCT', 'META-DESCRIPCION', 'URL IMGs', 'ELIMINAR IMG',
             'DESCRIPCION LARGA', 'ANCHURA', 'ALTURA', 'PROFUNDIDAD', 'PESO PRODUCT',
@@ -202,7 +251,8 @@ def consultar_ambar(datos_mapeados_stream):
             'EAN COMBI', 'NOMBRE COMBI:TIPO', '|', 'REF', 'NOMBRE', 'PROVEEDOR', 'FAMILIA',
             'SUBFAMILIA', 'P.COMPRA', 'PVP (+IVA)', 'EAN', 'ALT 1', 'ALT 2', 'ALT 3',
             'UNIDAD', 'LOTE', 'PESO', 'CODNC', 'LIBRE1=MARCA', 'LIBRE2=TEMPORADA',
-            'LIBRE3=PRODUCTO', 'LIBRE4=GAMA/MODELO', 'LIBRE5=GRUPO'
+            'LIBRE3=PRODUCTO', 'LIBRE4=GAMA/MODELO', 'LIBRE5=GRUPO', 'LIBRE6=EDAD',
+            'P.COMPRA (Excel)', 'PVP S/IVA (Excel)', 'PVP (+IVA) (Excel)'
         ]
         
         todas_filas = []  
@@ -224,7 +274,7 @@ def consultar_ambar(datos_mapeados_stream):
                 query = f"""
                     SELECT Artículo, [Descripción], Familia, Proveedor, PVPGralSinIVAEu, 
                            PVPGralConIVAEu, PrecioUltCompraEu, [CódigoBarras], PesoBruto, 
-                           SubFamilia, CodigoNC, Libre1, Libre2, Libre3, Libre4, Libre5 
+                           SubFamilia, CodigoNC, Libre1, Libre2, Libre3, Libre4, Libre5, Libre6
                     FROM [Artículos] 
                     WHERE [Artículo] IN ('{referencias_str}')
                 """
@@ -244,7 +294,7 @@ def consultar_ambar(datos_mapeados_stream):
                 query_ean = f"""
                     SELECT Artículo, [Descripción], Familia, Proveedor, PVPGralSinIVAEu, 
                            PVPGralConIVAEu, PrecioUltCompraEu, [CódigoBarras], PesoBruto, 
-                           SubFamilia, CodigoNC, Libre1, Libre2, Libre3, Libre4, Libre5 
+                           SubFamilia, CodigoNC, Libre1, Libre2, Libre3, Libre4, Libre5, Libre6
                     FROM [Artículos] 
                     WHERE [CódigoBarras] IN ('{eans_str}')
                 """
@@ -357,44 +407,47 @@ def consultar_ambar(datos_mapeados_stream):
                 datos_ambar = resultados_dict.get(ref_busqueda) if ref_busqueda in resultados_dict else None
 
                 if datos_ambar:
+                    #logger.debug(f"Datos Ambar para {ref_busqueda}: {datos_ambar}")
+
                     nueva_fila['REF'] = str(ref_busqueda)
-                    # Solo usar precios de Ambar si no hay precios en Excel
-                    if datos_excel is not None:
-                        # Verificar P.COMPRA del Excel
-                        if pd.notna(datos_excel.get('P.COMPRA')) and str(datos_excel.get('P.COMPRA')).strip():
-                            nueva_fila['P.COMPRA'] = formatear_precio(datos_excel['P.COMPRA'])
-                        else:
-                            nueva_fila['P.COMPRA'] = formatear_precio(datos_ambar[6])
-                        
-                        # Verificar PVP S/IVA del Excel
-                        if pd.notna(datos_excel.get('PVP S/IVA')) and str(datos_excel.get('PVP S/IVA')).strip():
-                            nueva_fila['PVP S/IVA'] = formatear_precio(datos_excel['PVP S/IVA'])
-                        else:
-                            nueva_fila['PVP S/IVA'] = formatear_precio(datos_ambar[4])
-                            
-                        # Verificar PVP +IVA del Excel
-                        if pd.notna(datos_excel.get('PVP +IVA')) and str(datos_excel.get('PVP +IVA')).strip():
-                            nueva_fila['PVP (+IVA)'] = formatear_precio(datos_excel['PVP +IVA'])
-                        else:
-                            nueva_fila['PVP (+IVA)'] = formatear_precio(datos_ambar[5])
-                    else:
-                        # Si no hay datos en Excel, usar precios de Ambar
-                        nueva_fila['P.COMPRA'] = formatear_precio(datos_ambar[6])
-                        nueva_fila['PVP S/IVA'] = formatear_precio(datos_ambar[4])
-                        nueva_fila['PVP (+IVA)'] = formatear_precio(datos_ambar[5])
-                    
-                    nueva_fila['NOMBRE'] = str(datos_ambar[1])
-                    nueva_fila['FAMILIA'] = str(datos_ambar[2])
-                    nueva_fila['PROVEEDOR'] = str(datos_ambar[3])
-                    nueva_fila['EAN'] = str(datos_ambar[7])
-                    nueva_fila['PESO'] = str(datos_ambar[8])
-                    nueva_fila['SUBFAMILIA'] = str(datos_ambar[9])
-                    nueva_fila['CODNC'] = str(datos_ambar[10]).replace(' ', '')
-                    nueva_fila['LIBRE1=MARCA'] = str(datos_ambar[11])
-                    nueva_fila['LIBRE2=TEMPORADA'] = str(datos_ambar[12])
-                    nueva_fila['LIBRE3=PRODUCTO'] = str(datos_ambar[13])
+
+                    # ---------------------------------------------------
+                    # 1) Valores que llegan en el Excel (si los hay)
+                    # ---------------------------------------------------
+                    p_compra_excel    = formatear_precio(datos_excel.get('P.COMPRA', ''))    if datos_excel is not None else ''
+                    pvp_sin_iva_excel = formatear_precio(datos_excel.get('PVP S/IVA', ''))   if datos_excel is not None else ''
+                    pvp_con_iva_excel = formatear_precio(datos_excel.get('PVP +IVA', ''))    if datos_excel is not None else ''
+
+                    # ---------------------------------------------------
+                    # 2) Guardar valores del Excel en columnas informativas
+                    # ---------------------------------------------------
+                    nueva_fila['P.COMPRA (Excel)']     = p_compra_excel
+                    nueva_fila['PVP S/IVA (Excel)']    = pvp_sin_iva_excel
+                    nueva_fila['PVP (+IVA) (Excel)']   = pvp_con_iva_excel
+
+                    # ---------------------------------------------------
+                    # 3) SIEMPRE escribir los precios de Ambar en columnas principales
+                    # ---------------------------------------------------
+                    nueva_fila['P.COMPRA']    = formatear_precio(datos_ambar[6])  # PrecioUltCompraEu
+                    nueva_fila['PVP S/IVA']   = formatear_precio(datos_ambar[4])  # PVPGralSinIVAEu
+                    nueva_fila['PVP (+IVA)']  = formatear_precio(datos_ambar[5])  # PVPGralConIVAEu
+
+                    # ---------------------------------------------------
+                    # 4) Otros datos de Ambar
+                    # ---------------------------------------------------
+                    nueva_fila['NOMBRE']             = str(datos_ambar[1])
+                    nueva_fila['FAMILIA']            = str(datos_ambar[2])
+                    nueva_fila['PROVEEDOR']          = str(datos_ambar[3])
+                    nueva_fila['EAN']                = str(datos_ambar[7])
+                    nueva_fila['PESO']               = str(datos_ambar[8])
+                    nueva_fila['SUBFAMILIA']         = str(datos_ambar[9])
+                    nueva_fila['CODNC']              = str(datos_ambar[10]).replace(' ', '')
+                    nueva_fila['LIBRE1=MARCA']       = str(datos_ambar[11])
+                    nueva_fila['LIBRE2=TEMPORADA']   = str(datos_ambar[12])
+                    nueva_fila['LIBRE3=PRODUCTO']    = str(datos_ambar[13])
                     nueva_fila['LIBRE4=GAMA/MODELO'] = str(datos_ambar[14])
-                    nueva_fila['LIBRE5=GRUPO'] = str(datos_ambar[15])
+                    nueva_fila['LIBRE5=GRUPO']       = str(datos_ambar[15])
+                    nueva_fila['LIBRE6=EDAD']        = str(datos_ambar[16])
                 
                 # Procesar datos de Prestashop
                 if ref_busqueda in resultados_product:
@@ -402,7 +455,7 @@ def consultar_ambar(datos_mapeados_stream):
                     nueva_fila['EAN PRODUCT'] = str(resultados_product[ref_busqueda]['ean'])
                     nueva_fila['NOMBRE (SIN TALLA)'] = str(resultados_product[ref_busqueda]['nombre'])
                     nueva_fila['MARCA'] = str(resultados_product[ref_busqueda]['marca'])
-                    nueva_fila['PVP +IVA'] = formatear_precio(resultados_product[ref_busqueda]['precio'])
+                    nueva_fila['PVP S/IVA'] = formatear_precio(resultados_product[ref_busqueda]['precio'])
                     nueva_fila['|'] = '|'
                 elif ref_busqueda in resultados_attribute:
                     nueva_fila['REF COMBI'] = str(ref_busqueda)
@@ -410,7 +463,7 @@ def consultar_ambar(datos_mapeados_stream):
                     nueva_fila['REF MADRE'] = str(resultados_attribute[ref_busqueda]['ref_madre'])
                     nueva_fila['NOMBRE (SIN TALLA)'] = str(resultados_attribute[ref_busqueda]['nombre'])
                     nueva_fila['MARCA'] = str(resultados_attribute[ref_busqueda]['marca'])
-                    nueva_fila['PVP +IVA'] = formatear_precio(resultados_attribute[ref_busqueda]['precio'])
+                    nueva_fila['PVP S/IVA'] = formatear_precio(resultados_attribute[ref_busqueda]['precio'])
                     nueva_fila['|'] = '|'
                 
                 # Añadir características de Prestashop
@@ -427,8 +480,6 @@ def consultar_ambar(datos_mapeados_stream):
                         nueva_fila['ALTURA'] = str(datos_excel['ALTURA'])
                     if pd.notna(datos_excel.get('PROFUNDIDAD')):
                         nueva_fila['PROFUNDIDAD'] = str(datos_excel['PROFUNDIDAD'])
-                    if pd.notna(datos_excel.get('P.COMPRA')):
-                        nueva_fila['P.COMPRA'] = formatear_precio(datos_excel['P.COMPRA'])
                 
                 todas_filas.append(nueva_fila)
 
@@ -455,7 +506,7 @@ def consultar_ambar(datos_mapeados_stream):
         # Procesar referencias no encontradas si existen
         output_no_encontradas = None
         if referencias_no_encontradas:
-            df_no_encontradas = procesar_referencias_no_encontradas(df_mapeado, referencias_no_encontradas)
+            df_no_encontradas = procesar_referencias_no_encontradas(df_mapeado, referencias_no_encontradas, plantilla_seleccionada="UFO PLASTICS")
             if df_no_encontradas is not None:
                 output_no_encontradas = BytesIO()
                 with pd.ExcelWriter(output_no_encontradas, engine='openpyxl') as writer:
@@ -472,73 +523,90 @@ def consultar_ambar(datos_mapeados_stream):
         logger.error(f"Error en consulta_ambar: {str(e)}")
         return {'success': False, 'error': str(e)}
 
-def mapear_excel_a_plantilla(file_stream, nombre_plantilla):
+def mapear_excel_a_plantilla(file_stream, nombre_plantilla, mapeo_dict=None):
     """
-    Mapea un archivo Excel según la plantilla seleccionada.
+    Mapea un archivo Excel según la plantilla o el mapeo manual.
     """
     try:
-        logger.info(f"Iniciando mapeo con plantilla: {nombre_plantilla}")
-        
-        # Verificar que la plantilla existe
-        if nombre_plantilla not in plantillas:
-            error_msg = f"Plantilla '{nombre_plantilla}' no encontrada"
-            logger.error(error_msg)
-            return {'success': False, 'error': error_msg}
-        
-        # Obtener el mapeo de columnas
-        mapeo_columnas = plantillas[nombre_plantilla]
-        logger.debug(f"Usando mapeo de columnas: {mapeo_columnas}")
-        
+        logger.info(f"Iniciando mapeo - Plantilla: {nombre_plantilla}, ¿Mapeo manual? {bool(mapeo_dict)}")
+
+        if not nombre_plantilla and not mapeo_dict:
+            return {'success': False, 'error': 'Se requiere plantilla o mapeo manual'}
+
         try:
-            df_entrada = pd.read_excel(file_stream)
+            df_entrada = pd.read_excel(file_stream, dtype=str)
             logger.info("Archivo Excel leído correctamente")
         except Exception as e:
             error_msg = f"Error al leer el archivo Excel: {str(e)}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
-        
-        # Realizar el mapeo de columnas
+
         datos_salida = {}
-        for columna_destino, letra_columna in mapeo_columnas.items():
+
+        # Si hay mapeo manual, renombrar y usar directamente
+        if mapeo_dict:
             try:
-                indice = letra_a_numero(letra_columna)
-                if indice < len(df_entrada.columns):
-                    datos_salida[columna_destino] = df_entrada.iloc[:, indice]
-                    logger.debug(f"Mapeada columna {letra_columna} a {columna_destino}")
-                else:
-                    logger.warning(f"Columna '{letra_columna}' fuera de rango")
-                    datos_salida[columna_destino] = pd.Series([''] * len(df_entrada))
+                inverso = {v: k for k, v in mapeo_dict.items()}
+                df_entrada.rename(columns=inverso, inplace=True)
+                logger.info(f"Columnas renombradas con mapeo personalizado: {inverso}")
+
+                for campo in mapeo_dict.keys():
+                    try:
+                        datos_salida[campo] = df_entrada[campo]
+                        logger.debug(f"Campo mapeado: {campo}")
+                    except KeyError:
+                        logger.warning(f"Columna '{campo}' no encontrada tras renombrar")
+                        datos_salida[campo] = pd.Series([''] * len(df_entrada))
             except Exception as e:
-                logger.error(f"Error al mapear columna {columna_destino}: {str(e)}")
-                datos_salida[columna_destino] = pd.Series([''] * len(df_entrada))
-        
+                logger.error(f"Error aplicando mapeo manual: {str(e)}")
+                return {'success': False, 'error': f'Error en mapeo manual: {str(e)}'}
+
+        # Si no hay mapeo manual, usar plantilla
+        elif nombre_plantilla:
+            if nombre_plantilla not in plantillas:
+                return {'success': False, 'error': f"Plantilla '{nombre_plantilla}' no encontrada"}
+            mapeo_columnas = plantillas[nombre_plantilla]
+            logger.debug(f"Usando plantilla: {mapeo_columnas}")
+
+            for columna_destino, letra_columna in mapeo_columnas.items():
+                try:
+                    indice = letra_a_numero(letra_columna)
+                    if indice < len(df_entrada.columns):
+                        datos_salida[columna_destino] = df_entrada.iloc[:, indice]
+                        logger.debug(f"Mapeada columna {letra_columna} a {columna_destino}")
+                    else:
+                        logger.warning(f"Columna '{letra_columna}' fuera de rango")
+                        datos_salida[columna_destino] = pd.Series([''] * len(df_entrada))
+                except Exception as e:
+                    logger.error(f"Error al mapear columna {columna_destino}: {str(e)}")
+                    datos_salida[columna_destino] = pd.Series([''] * len(df_entrada))
+
         # Crear DataFrame con los datos mapeados
         df_salida = pd.DataFrame(datos_salida)
-        
-        # Crear BytesIO para datos mapeados
+
+        # Exportar a BytesIO
         datos_mapeados = BytesIO()
         with pd.ExcelWriter(datos_mapeados, engine='openpyxl') as writer:
             df_salida.to_excel(writer, index=False)
-        
         datos_mapeados.seek(0)
-        
-        # Consultar Ambar y procesar resultados
+
+        # Llamar a consulta Ambar
         try:
             logger.info("Iniciando consulta a Ambar...")
             resultado = consultar_ambar(datos_mapeados)
-            
+
             if resultado['success']:
                 logger.info("Proceso completado exitosamente")
                 return resultado
             else:
                 logger.error(f"Error en consulta_ambar: {resultado.get('error')}")
                 return resultado
-                
+
         except Exception as e:
             error_msg = f"Error en la consulta a Ambar: {str(e)}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
-            
+
     except Exception as e:
         error_msg = f"Error general en el procesamiento: {str(e)}"
         logger.error(error_msg)
