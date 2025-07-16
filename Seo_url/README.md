@@ -170,5 +170,5 @@ python start.py
 
 Para más información o mejoras, puedes contactarme en:
 
-- **GitHub:** [@TU_USUARIO](https://github.com/TU_USUARIO)
-- **LinkedIn:** [Tu Nombre](https://www.linkedin.com/in/TU_PERFIL)
+- GitHub: [@OscarAdrian98](https://github.com/OscarAdrian98)
+- LinkedIn: [Oscar Adrian](https://www.linkedin.com/in/oscar-adrian)
