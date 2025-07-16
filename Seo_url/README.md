@@ -1,4 +1,3 @@
-```markdown
 # 🛠️ Proyecto: Seo_url
 
 ## 📌 Descripción
@@ -173,4 +172,3 @@ Para más información o mejoras, puedes contactarme en:
 
 - **GitHub:** [@TU_USUARIO](https://github.com/TU_USUARIO)
 - **LinkedIn:** [Tu Nombre](https://www.linkedin.com/in/TU_PERFIL)
-```
