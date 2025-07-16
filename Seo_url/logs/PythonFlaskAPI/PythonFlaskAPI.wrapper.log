@@ -1,0 +1,112 @@
+2025-07-04 11:58:27,543 DEBUG - Starting WinSW in console mode
+2025-07-04 11:58:30,321 DEBUG - Starting WinSW in console mode
+2025-07-04 11:58:30,352 INFO  - Installing service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 11:58:30,386 INFO  - Service 'Python Flask API (PythonFlaskAPI)' was installed successfully.
+2025-07-04 11:58:46,825 DEBUG - Starting WinSW in console mode
+2025-07-04 11:58:48,553 DEBUG - Starting WinSW in console mode
+2025-07-04 11:58:48,588 INFO  - Starting service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 11:58:48,911 DEBUG - Starting WinSW in service mode
+2025-07-04 11:58:48,941 INFO  - Service 'Python Flask API (PythonFlaskAPI)' started successfully.
+2025-07-04 11:58:49,037 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 11:58:49,063 INFO  - Started process 6900
+2025-07-04 11:58:49,074 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-04 12:00:56,936 DEBUG - Starting WinSW in service mode
+2025-07-04 12:00:57,060 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 12:00:57,085 INFO  - Started process 29600
+2025-07-04 12:00:57,096 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-04 12:01:20,735 DEBUG - Starting WinSW in console mode
+2025-07-04 12:01:22,399 DEBUG - Starting WinSW in console mode
+2025-07-04 12:01:22,433 INFO  - Stopping service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 12:01:22,447 INFO  - Service 'Python Flask API (PythonFlaskAPI)' has already stopped.
+2025-07-04 12:01:28,803 DEBUG - Starting WinSW in console mode
+2025-07-04 12:01:30,430 DEBUG - Starting WinSW in console mode
+2025-07-04 12:01:30,461 INFO  - Uninstalling service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 12:01:30,466 INFO  - Service 'Python Flask API (PythonFlaskAPI)' was uninstalled successfully.
+2025-07-04 12:12:42,062 DEBUG - Starting WinSW in console mode
+2025-07-04 12:12:44,022 DEBUG - Starting WinSW in console mode
+2025-07-04 12:12:44,053 INFO  - Installing service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 12:12:44,070 INFO  - Service 'Python Flask API (PythonFlaskAPI)' was installed successfully.
+2025-07-04 12:12:54,358 DEBUG - Starting WinSW in console mode
+2025-07-04 12:12:54,392 FATAL - Unhandled exception
+System.Exception: Unknown command: run
+   at WinSW.Program.Run(String[] argsArray, IServiceConfig config)
+   at WinSW.Program.Main(String[] args)
+2025-07-04 12:13:23,020 DEBUG - Starting WinSW in console mode
+2025-07-04 12:13:24,682 DEBUG - Starting WinSW in console mode
+2025-07-04 12:13:24,716 INFO  - Starting service 'Python Flask API (PythonFlaskAPI)'...
+2025-07-04 12:13:25,038 DEBUG - Starting WinSW in service mode
+2025-07-04 12:13:25,069 INFO  - Service 'Python Flask API (PythonFlaskAPI)' started successfully.
+2025-07-04 12:13:25,165 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 12:13:25,190 INFO  - Started process 19424
+2025-07-04 12:13:25,201 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-04 12:39:10,599 INFO  - Stopping PythonFlaskAPI
+2025-07-04 12:39:10,600 DEBUG - ProcessKill 19424
+2025-07-04 12:39:10,602 DEBUG - Stopping process 19424...
+2025-07-04 12:39:11,247 DEBUG - Process 19424 canceled with code 0.
+2025-07-04 12:39:11,250 INFO  - Finished PythonFlaskAPI
+2025-07-04 12:39:50,107 DEBUG - Starting WinSW in service mode
+2025-07-04 12:39:50,232 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 12:39:50,257 INFO  - Started process 14412
+2025-07-04 12:39:50,267 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-04 17:24:26,750 INFO  - Stopping PythonFlaskAPI
+2025-07-04 17:24:26,751 DEBUG - ProcessKill 14412
+2025-07-04 17:24:26,754 DEBUG - Stopping process 14412...
+2025-07-04 17:24:27,066 DEBUG - Process 14412 canceled with code 0.
+2025-07-04 17:24:27,069 INFO  - Finished PythonFlaskAPI
+2025-07-04 17:26:34,704 DEBUG - Starting WinSW in service mode
+2025-07-04 17:26:34,828 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 17:26:34,856 INFO  - Started process 9908
+2025-07-04 17:26:34,866 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-04 18:58:23,075 INFO  - Stopping PythonFlaskAPI
+2025-07-04 18:58:23,075 DEBUG - ProcessKill 9908
+2025-07-04 18:58:23,078 DEBUG - Stopping process 9908...
+2025-07-04 18:58:23,690 DEBUG - Process 9908 canceled with code 0.
+2025-07-04 18:58:23,693 INFO  - Finished PythonFlaskAPI
+2025-07-04 19:00:48,475 DEBUG - Starting WinSW in service mode
+2025-07-04 19:00:48,611 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-04 19:00:48,636 INFO  - Started process 27056
+2025-07-04 19:00:48,647 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-09 08:40:14,518 DEBUG - Starting WinSW in service mode
+2025-07-09 08:40:14,739 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-09 08:40:14,767 INFO  - Started process 9460
+2025-07-09 08:40:14,780 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-09 08:41:32,076 DEBUG - Starting WinSW in service mode
+2025-07-09 08:41:32,380 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-09 08:41:32,418 INFO  - Started process 9640
+2025-07-09 08:41:32,433 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-10 17:35:19,440 INFO  - Stopping PythonFlaskAPI
+2025-07-10 17:35:19,452 DEBUG - ProcessKill 9640
+2025-07-10 17:35:19,455 DEBUG - Stopping process 9640...
+2025-07-10 17:35:20,227 DEBUG - Process 9640 canceled with code 0.
+2025-07-10 17:35:20,301 INFO  - Finished PythonFlaskAPI
+2025-07-10 17:38:12,286 DEBUG - Starting WinSW in service mode
+2025-07-10 17:38:12,422 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-10 17:38:12,452 INFO  - Started process 20808
+2025-07-10 17:38:12,462 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-10 18:08:08,010 INFO  - Stopping PythonFlaskAPI
+2025-07-10 18:08:08,011 DEBUG - ProcessKill 20808
+2025-07-10 18:08:08,013 DEBUG - Stopping process 20808...
+2025-07-10 18:08:08,761 DEBUG - Process 20808 canceled with code 0.
+2025-07-10 18:08:08,764 INFO  - Finished PythonFlaskAPI
+2025-07-10 18:08:48,892 DEBUG - Starting WinSW in service mode
+2025-07-10 18:08:49,017 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-10 18:08:49,045 INFO  - Started process 14176
+2025-07-10 18:08:49,058 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-10 19:40:07,811 INFO  - Stopping PythonFlaskAPI
+2025-07-10 19:40:07,811 DEBUG - ProcessKill 14176
+2025-07-10 19:40:07,813 DEBUG - Stopping process 14176...
+2025-07-10 19:40:08,054 DEBUG - Process 14176 canceled with code 0.
+2025-07-10 19:40:08,057 INFO  - Finished PythonFlaskAPI
+2025-07-10 19:40:19,387 DEBUG - Starting WinSW in service mode
+2025-07-10 19:40:19,514 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-10 19:40:19,539 INFO  - Started process 21268
+2025-07-10 19:40:19,550 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender
+2025-07-10 19:51:10,260 INFO  - Stopping PythonFlaskAPI
+2025-07-10 19:51:10,260 DEBUG - ProcessKill 21268
+2025-07-10 19:51:10,262 DEBUG - Stopping process 21268...
+2025-07-10 19:51:10,853 DEBUG - Process 21268 canceled with code 0.
+2025-07-10 19:51:10,856 INFO  - Finished PythonFlaskAPI
+2025-07-10 19:51:23,986 DEBUG - Starting WinSW in service mode
+2025-07-10 19:51:24,112 INFO  - Starting "C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe" "D:\www\oscar\Seo_url\start.py"
+2025-07-10 19:51:24,137 INFO  - Started process 10624
+2025-07-10 19:51:24,149 DEBUG - Forwarding logs of the process System.Diagnostics.Process (python) to WinSW.RollingLogAppender

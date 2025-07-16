@@ -1,0 +1,343 @@
+/* ------------------------------
+    Global Styles
+------------------------------ */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+h1 {
+    color: #222;
+}
+
+h2 {
+    color: #007BFF;
+    margin-top: 40px;
+}
+
+h3 {
+    color: #007BFF;
+    margin-top: 30px;
+}
+
+/* ------------------------------
+    Form Styles
+------------------------------ */
+
+form {
+    margin-bottom: 30px;
+}
+
+input[type="text"] {
+    padding: 8px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    width: 60%;
+    max-width: 600px;
+}
+
+button {
+    padding: 8px 15px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* ------------------------------
+    Table Styles
+------------------------------ */
+
+.result-table,
+.table {
+    background-color: #fff;
+    margin-top: 20px;
+}
+
+.result-table th,
+.result-table td,
+.table th,
+.table td {
+    border: 1px solid #ccc;
+    padding: 15px;
+    vertical-align: top;
+    text-align: left;
+    max-width: 400px;
+    overflow-wrap: break-word;
+}
+
+.table th {
+    background-color: #007BFF;
+    color: #fff;
+}
+
+.table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.table img {
+    max-width: 100px;
+    height: auto;
+    display: block;
+}
+
+/* DataTables specific tweaks */
+.dataTables_wrapper .dataTables_filter input {
+    margin-left: 0.5em;
+    display: inline-block;
+    width: auto;
+}
+
+/* ------------------------------
+    Miscellaneous
+------------------------------ */
+
+.image-url {
+    font-size: 12px;
+    color: #555;
+    word-break: break-all;
+    margin-top: 5px;
+}
+
+.button-group {
+    margin-bottom: 20px;
+}
+
+.button-group button {
+    margin-right: 10px;
+}
+
+/* ------------------------------
+    Reseñas Styles (fuera del modal)
+------------------------------ */
+
+.reseñas-container {
+    margin-top: 40px;
+}
+
+.reseñas-container h3 {
+    color: #007BFF;
+    margin-bottom: 20px;
+}
+
+.reseña {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.reseña .estrellas {
+    color: #f39c12;
+    font-size: 1.3em;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.reseña p {
+    margin: 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.descripciones-container {
+    margin-top: 40px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+.descripciones-container h3 {
+    color: #007BFF;
+    margin-bottom: 10px;
+}
+
+.descripciones-container p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+/* ------------------------------
+    Modal Styles
+------------------------------ */
+
+#modalEditar .modal-header {
+    background-color: #007BFF;
+    color: #fff;
+}
+
+#modalEditar .modal-title {
+    font-weight: bold;
+}
+
+#modalEditar img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+#modalEditar textarea {
+    font-size: 14px;
+}
+
+#modalEditar .reseña-block {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.producto-existe-seo {
+    background-color: #d4edda !important;
+}
+
+.btn-generar-larga-desde0 {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.btn-generar-larga-desde0:hover {
+    background-color: #218838;
+}
+
+/* Campos nuevos en modal */
+#modalEditar input#modal-meta-title,
+#modalEditar textarea#modal-meta-description {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+/* Botones IA nuevos */
+.btn-generar-meta-title {
+    background-color: #17a2b8;
+    color: #fff;
+}
+.btn-generar-meta-title:hover {
+    background-color: #138496;
+}
+
+.btn-generar-meta-description {
+    background-color: #ffc107;
+    color: #212529;
+}
+.btn-generar-meta-description:hover {
+    background-color: #e0a800;
+}
+
+/* Ajustes tabla */
+.table th,
+.table td {
+    max-width: 250px;
+    overflow-wrap: break-word;
+}
+
+/* Espaciado modal */
+#modalEditar input,
+#modalEditar textarea {
+    margin-bottom: 10px;
+}
+
+/* Reseñas scroll */
+#modalEditar #modal-reseñas {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Placeholder opacity */
+.table img[src*="placeholder"] {
+    opacity: 0.4;
+}
+
+/* --- Tablas compactas --- */
+#tabla-productos.table-sm th,
+#tabla-productos.table-sm td {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+.icon-seo {
+    font-size: 28px;
+}
+
+.custom-modal {
+    max-width: 950px;
+}
+
+#modalLoading .modal-dialog {
+    max-width: 150px;
+}
+
+#modalLoading .modal-content {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+/* ------------------------------
+    Centrado icono SEO
+------------------------------ */
+
+#tabla-productos td.text-center {
+    vertical-align: middle;
+    text-align: center;
+    padding: 0.35rem;
+}
+
+/* Estilos bonitos para el bloque de filtros */
+.filtros-box {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filtros-box label {
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #495057;
+}
+
+.filtros-box .form-check {
+    margin-right: 1rem;
+}
+
+.filtros-box .form-check-input {
+    cursor: pointer;
+    border-color: #0d6efd;
+}
+
+.filtros-box .form-check-label {
+    cursor: pointer;
+    color: #0d6efd;
+    font-weight: 600;
+    margin-left: 0.3rem;
+}
+
+.filtros-box .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.filtros-box .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+#tabla-productos th,
+#tabla-productos td {
+    text-align: center;
+    vertical-align: middle;
+}

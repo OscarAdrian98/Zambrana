@@ -1,0 +1,13 @@
+<service>
+  <id>PythonFlaskAPI</id>
+  <name>Python Flask API</name>
+  <description>Servicio que ejecuta el servidor Flask vía Waitress.</description>
+
+  <executable>"C:\Users\Zambrana\AppData\Local\Programs\Python\Python311\python.exe"</executable>
+  <arguments>"D:\www\oscar\Seo_url\start.py"</arguments>
+
+  <workingdirectory>D:\www\oscar\Seo_url</workingdirectory>
+
+  <logpath>D:\www\oscar\Seo_url\logs\PythonFlaskAPI</logpath>
+  <log mode="roll" sizeThreshold="10240" keepFiles="5" pattern="yyyyMMdd"></log>
+</service>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestión de Reseñas</title>
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- Tu propio CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reseñas.css') }}">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+  <div class="container">
+    <a class="navbar-brand" href="#">SEO Tools</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="/">Scrapear producto</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active" href="{{ url_for('vista_reseñas') }}">Gestión de Reseñas</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">Gestión de Reseñas</h1>
+        <div class="d-flex align-items-center gap-2">
+            <label for="filtro-seo" class="fw-bold mb-0">SEO:</label>
+            <select id="filtro-seo" class="form-select form-select-sm" style="width: auto;">
+                <option value="">(Todos)</option>
+                <option value="Sí">Sí</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+    </div>
+
+    <table id="tabla-productos" class="table table-striped table-bordered table-sm tabla-reseñas">
+      <thead>
+        <tr>
+            <th>SEO</th>
+            <th>ID Producto</th>
+            <th>Nombre Producto</th>
+            <th>Total Reseñas</th>
+            <th>Activas</th>
+            <th>Media Estrellas</th>
+            <th>Acciones</th>
+            <th class="d-none">Última Fecha Reseña</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl custom-modal">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="modalEditarLabel">
+                  Editar Reseñas
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+              <form id="form-editar" role="form">
+                  <div class="row mb-3">
+                      <div class="col-md-12">
+                          <div class="mb-2">
+                              <strong>ID Producto:</strong>
+                              <span id="modal-id-product" data-id=""></span>
+                          </div>
+                          <div class="mb-2">
+                              <strong>Nombre Producto:</strong>
+                              <span id="modal-nombre-producto" data-nombre=""></span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div class="mb-3 d-flex gap-2">
+                      <button type="button" id="btn-generar-otra-reseña" class="btn btn-outline-info">
+                          <i class="bi bi-stars"></i> Generar Otra Reseña IA
+                      </button>
+                  </div>
+
+                  <div id="modal-reseñas"></div>
+
+              </form>
+          </div>
+          <div class="modal-footer d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  Cerrar
+              </button>
+              <button type="button" id="btn-guardar-reseñas" class="btn btn-success">
+                  Guardar Cambios
+              </button>
+          </div>
+      </div>
+  </div>
+</div>
+
+<!-- Spinner overlay (opcional, si quieres tenerlo fijo en HTML) -->
+<div class="modal fade" id="modalLoading" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-transparent shadow-none">
+      <div class="modal-body text-center p-3">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="{{ url_for('static', filename='js/reseñas.js') }}"></script>
+
+</body>
+</html>
