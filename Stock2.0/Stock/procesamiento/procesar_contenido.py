@@ -45,23 +45,20 @@ def procesar_archivo_excel(archivo_bytes, id_proveedor, id_marca, conexion_prove
 
     try:
         if tipo_archivo == 'csv':
-            # Procesar archivo CSV
             df = pd.read_csv(BytesIO(archivo_bytes), 
                              encoding='latin1', 
-                             on_bad_lines='skip',  # Saltar líneas problemáticas
+                             on_bad_lines='skip',
                              sep=configuracion_excel["separador_csv_configuracion"], 
                              header=None, 
                              skiprows=configuracion_excel["fila_comienzo_configuracion"], 
-                             dtype=str)  # Asegura que todo es texto
+                             dtype=str)
         elif tipo_archivo in ['xlsx', 'xls']:
-            # Procesar archivo Excel
             pd.set_option('display.float_format', lambda x: '%.f' % x)
             df = pd.read_excel(BytesIO(archivo_bytes), 
                                skiprows=configuracion_excel["fila_comienzo_configuracion"], 
                                header=None, 
                                usecols=configuracion_excel.get("columnas_utilizadas_configuracion"))
         elif tipo_archivo == 'txt':
-            # Procesar archivo TXT como delimitado por tabulaciones u otro delimitador
             df = pd.read_csv(BytesIO(archivo_bytes), 
                              delimiter=configuracion_excel.get("separador_txt_configuracion", '\t'), 
                              header=None, 
@@ -70,22 +67,51 @@ def procesar_archivo_excel(archivo_bytes, id_proveedor, id_marca, conexion_prove
                              dtype={col_referencia_configuracion: str})
         else:
             raise ValueError("Tipo de archivo no soportado")
-        
-        # Reemplazar NaN con cadenas vacías y convertir todo a texto
+
         df = df.fillna('').astype(str)
 
-        # Procesamiento según las columnas configuradas
+        if id_proveedor == 5:
+            logging.info("Proveedor 5 detectado: duplicando filas para ambas columnas de referencia.")
+
+            col_ref = int(col_referencia_configuracion)
+
+            # DataFrame A → referencia = columna configurada (ej. 0)
+            df_a = df.copy()
+            df_a.iloc[:, col_ref] = df.iloc[:, col_ref]
+
+            # DataFrame B → referencia = columna 1
+            df_b = df.copy()
+            df_b.iloc[:, col_ref] = df.iloc[:, 1]
+
+            # Concatenar ambos dataframes
+            df = pd.concat([df_a, df_b], ignore_index=True)
+
+            # Eliminar filas donde la referencia quedó vacía
+            df = df[df.iloc[:, col_ref] != '']
+
+            logging.info(f"Se han preparado {len(df)} filas finales para el proveedor 5.")
+
+        # Procesamiento normal:
         if col_fecha_configuracion and col_referencia_configuracion and not col_ean_configuracion:
-            df_referencias_fechas = procesar_dataframe_referencias_fechas(df, col_referencia_configuracion, col_fecha_configuracion, configuracion_excel)
+            df_referencias_fechas = procesar_dataframe_referencias_fechas(
+                df, col_referencia_configuracion, col_fecha_configuracion, configuracion_excel
+            )
             return df_referencias_fechas
         elif col_fecha_configuracion:
-            df_fechas = procesar_dataframe_fechas(df, col_referencia_configuracion, col_fecha_configuracion, configuracion_excel)
+            df_fechas = procesar_dataframe_fechas(
+                df, col_referencia_configuracion, col_fecha_configuracion, configuracion_excel
+            )
             return df_fechas
         elif col_ean_configuracion:
-            df_ean = procesar_dataframe_ean(df, col_referencia_configuracion, col_ean_configuracion, configuracion_excel, configuracion_excel["col_stock_configuracion"])
+            df_ean = procesar_dataframe_ean(
+                df, col_referencia_configuracion, col_ean_configuracion,
+                configuracion_excel, configuracion_excel["col_stock_configuracion"]
+            )
             return df_ean
         else:
-            df_referencias = procesar_dataframe_referencias(df, col_referencia_configuracion, configuracion_excel["col_stock_configuracion"])
+            df_referencias = procesar_dataframe_referencias(
+                df, col_referencia_configuracion, configuracion_excel["col_stock_configuracion"]
+            )
             return df_referencias
 
     except Exception as e:
@@ -326,59 +352,128 @@ def actualizar_base_datos(df, id_proveedor, id_marca, conexion_proveedores, cone
         raise e
         
 # Función para ver las referencias que no se han actualizado.
-def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_proveedores, conexion_prestashop, prestashop_df, proveedor_df):
+def verificar_referencias_no_actualizadas(
+    id_proveedor,
+    id_marca,
+    conexion_proveedores,
+    conexion_prestashop,
+    prestashop_df,
+    proveedor_df
+):
     from datetime import datetime
+    import pandas as pd
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
 
     try:
-        # 1️⃣ Obtener referencias no actualizadas hoy
+        # 1️⃣ Obtener referencias y EANs de productos NO actualizados hoy
         with conexion_proveedores.cursor() as cursor:
             cursor.execute("""
-                SELECT referencia_producto
+                SELECT referencia_producto, ean_producto
                 FROM productos
-                WHERE id_proveedor = %s AND id_marca = %s AND DATE(fecha_actualizacion_producto) != %s
+                WHERE id_proveedor = %s
+                  AND id_marca = %s
+                  AND DATE(fecha_actualizacion_producto) != %s
             """, (id_proveedor, id_marca, fecha_actual))
-            referencias_no_actualizadas = [str(row[0]) for row in cursor.fetchall()]
+            rows = cursor.fetchall()
+            referencias_no_actualizadas = [
+                (str(row[0]), str(row[1]) if row[1] else None)
+                for row in rows
+            ]
 
         if not referencias_no_actualizadas:
             logging.info("✅ Todas las referencias están actualizadas hoy.")
             return
 
-        # 2️⃣ Convertir a sets y filtrar
-        referencias_no_hoy = set(referencias_no_actualizadas)
-        referencias_fichero = set(proveedor_df['referencia'].astype(str))
+        # 2️⃣ Conjuntos del fichero y de PrestaShop
+        referencias_fichero = set(
+            proveedor_df['referencia'].dropna().astype(str)
+        )
+        ean_fichero = set(
+            proveedor_df['ean'].dropna().astype(str)
+        )
+
         referencias_prestashop_sin_stock = set(
-            prestashop_df[prestashop_df['quantity'] <= 0]['reference'].astype(str)
+            prestashop_df[
+                (prestashop_df['quantity'] <= 0) &
+                (prestashop_df['reference'].notnull()) &
+                (prestashop_df['reference'] != '')
+            ]['reference'].astype(str)
         )
 
-        # 3️⃣ Criterio final: no actualizada hoy + no está en fichero + sin stock en PrestaShop
-        referencias_a_cero = list(
-            (referencias_no_hoy - referencias_fichero) & referencias_prestashop_sin_stock
+        ean_prestashop_sin_stock = set(
+            prestashop_df[
+                (prestashop_df['quantity'] <= 0) &
+                (prestashop_df['ean13'].notnull()) &
+                (prestashop_df['ean13'] != '')
+            ]['ean13'].astype(str)
         )
 
-        for ref in referencias_a_cero:
-            logging.info(f"🔴 {ref} → stock = 0 (no llegó del proveedor, no se actualizó hoy y sin stock en PrestaShop)")
+        # 2️⃣ bis → Crear mapping EAN → referencia PrestaShop
+        ean_to_reference_prestashop = dict(
+            prestashop_df[
+                (prestashop_df['ean13'].notnull()) &
+                (prestashop_df['ean13'] != '')
+            ][['ean13', 'reference']].values
+        )
 
-        # 4️⃣ Actualizar stock = 0 en la base de datos del proveedor
+        # 3️⃣ Determinar referencias a poner stock 0
+        referencias_a_cero = []
+
+        for ref, ean in referencias_no_actualizadas:
+            ref_en_fichero = ref in referencias_fichero
+            ean_en_fichero = ean and ean in ean_fichero
+
+            ref_en_ps_sin_stock = ref in referencias_prestashop_sin_stock
+            ean_en_ps_sin_stock = ean and ean in ean_prestashop_sin_stock
+
+            if (
+                not ref_en_fichero
+                and not ean_en_fichero
+                and (ref_en_ps_sin_stock or ean_en_ps_sin_stock)
+            ):
+                if ean_en_ps_sin_stock and not ref_en_ps_sin_stock:
+                    ref_prestashop = ean_to_reference_prestashop.get(ean)
+                    if ref_prestashop:
+                        logging.info(
+                            f"➡️ Sustituyendo ref {ref} por ref PrestaShop {ref_prestashop} para desactivación."
+                        )
+                        ref = ref_prestashop
+
+                referencias_a_cero.append(ref)
+                logging.info(
+                    f"🔴 {ref} (EAN {ean}) → stock = 0 (no llegó del proveedor, no se actualizó hoy y sin stock en PrestaShop)"
+                )
+
+        # 4️⃣ Actualizar stock = 0 en tabla productos
         if referencias_a_cero:
             placeholders = ','.join(['%s'] * len(referencias_a_cero))
             query_update = f"""
                 UPDATE productos
-                SET stock_txt_producto = '0', hay_stock_producto = '0'
-                WHERE id_proveedor = %s AND id_marca = %s AND referencia_producto IN ({placeholders})
+                SET stock_txt_producto = '0',
+                    hay_stock_producto = '0'
+                WHERE id_proveedor = %s
+                  AND id_marca = %s
+                  AND referencia_producto IN ({placeholders})
             """
             with conexion_proveedores.cursor() as cursor:
-                cursor.execute(query_update, (id_proveedor, id_marca, *referencias_a_cero))
+                cursor.execute(
+                    query_update,
+                    (id_proveedor, id_marca, *referencias_a_cero)
+                )
                 conexion_proveedores.commit()
                 logging.info(f"🔻 {len(referencias_a_cero)} referencias actualizadas a stock = 0")
 
-            # 5️⃣ Desactivar atributos en PrestaShop si aún están activos y no tienen stock
+            # 5️⃣ Desactivar atributos en PrestaShop
             query_get_ids = f"""
                 SELECT pa.id_product_attribute, pa.reference, pa.id_product
                 FROM ps_product_attribute pa
-                JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
-                JOIN ps_product_attribute_shop pas ON pa.id_product_attribute = pas.id_product_attribute
-                WHERE pa.reference IN ({placeholders}) AND sa.quantity <= 0 AND pas.id_shop != 99
+                JOIN ps_stock_available sa
+                    ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
+                JOIN ps_product_attribute_shop pas
+                    ON pa.id_product_attribute = pas.id_product_attribute
+                WHERE pa.reference IN ({placeholders})
+                  AND sa.quantity <= 0
+                  AND pas.id_shop != 99
             """
             with conexion_prestashop.cursor() as cursor:
                 cursor.execute(query_get_ids, referencias_a_cero)
@@ -388,7 +483,9 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
                 ids_a_desactivar = [row[0] for row in atributos_a_desactivar]
                 ids_productos_afectados = list(set(row[2] for row in atributos_a_desactivar))
 
-                logging.info(f"🚫 Desactivando {len(ids_a_desactivar)} atributos en PrestaShop por no actualizarse y sin stock")
+                logging.info(
+                    f"🚫 Desactivando {len(ids_a_desactivar)} atributos en PrestaShop por no actualizarse y sin stock"
+                )
 
                 placeholders_ids = ','.join(['%s'] * len(ids_a_desactivar))
                 with conexion_prestashop.cursor() as cursor:
@@ -414,22 +511,87 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
                     conexion_prestashop.commit()
 
                 for row in atributos_a_desactivar:
-                    logging.info(f"❌ Atributo {row[1]} desactivado automáticamente.")
+                    logging.info(
+                        f"❌ Atributo {row[1]} desactivado automáticamente."
+                    )
+
+                # ✅ Desactivar productos sin atributos activos ni stock simple
+                if ids_productos_afectados:
+                    placeholders_prod = ','.join(['%s'] * len(ids_productos_afectados))
+                    query_atributos_activos = f"""
+                        SELECT pa.id_product
+                        FROM ps_product_attribute pa
+                        JOIN ps_product_attribute_shop pas
+                            ON pa.id_product_attribute = pas.id_product_attribute
+                        WHERE pa.id_product IN ({placeholders_prod})
+                          AND pas.id_shop != 99
+                    """
+                    with conexion_prestashop.cursor() as cursor:
+                        cursor.execute(query_atributos_activos, ids_productos_afectados)
+                        productos_con_atributos_activos = set(row[0] for row in cursor.fetchall())
+
+                    productos_sin_atributos_activos = [
+                        pid for pid in ids_productos_afectados
+                        if pid not in productos_con_atributos_activos
+                    ]
+
+                    if productos_sin_atributos_activos:
+                        placeholders_prod_sin_attr = ','.join(['%s'] * len(productos_sin_atributos_activos))
+                        query_stock_simple = f"""
+                            SELECT id_product, quantity
+                            FROM ps_stock_available
+                            WHERE id_product IN ({placeholders_prod_sin_attr})
+                              AND id_product_attribute = 0
+                              AND id_shop = 1
+                        """
+                        with conexion_prestashop.cursor() as cursor:
+                            cursor.execute(query_stock_simple, productos_sin_atributos_activos)
+                            stock_simple = {row[0]: row[1] for row in cursor.fetchall()}
+
+                        productos_a_desactivar = []
+                        for pid in productos_sin_atributos_activos:
+                            if stock_simple.get(pid, 0) <= 0:
+                                productos_a_desactivar.append(pid)
+
+                        if productos_a_desactivar:
+                            logging.info(f"🚫 Desactivando {len(productos_a_desactivar)} productos sin atributos ni stock.")
+
+                            placeholders_final = ','.join(['%s'] * len(productos_a_desactivar))
+                            with conexion_prestashop.cursor() as cursor:
+                                cursor.execute(f"""
+                                    UPDATE ps_product
+                                    SET active = 0
+                                    WHERE id_product IN ({placeholders_final})
+                                """, productos_a_desactivar)
+
+                                cursor.execute(f"""
+                                    UPDATE ps_product_shop
+                                    SET active = 0
+                                    WHERE id_product IN ({placeholders_final})
+                                """, productos_a_desactivar)
+
+                                conexion_prestashop.commit()
+
+                            for pid in productos_a_desactivar:
+                                logging.info(f"🚫 Producto padre {pid} desactivado automáticamente (sin atributos activos y sin stock).")
 
     except Exception as e:
         conexion_proveedores.rollback()
         logging.error(f"❌ Error durante verificación de referencias: {e}")
 
-    # 6️⃣ Reactivar atributos con stock si están en id_shop = 99
+    # 6️⃣ Reactivar atributos con stock si estaban en id_shop = 99
     try:
         with conexion_prestashop.cursor() as cursor:
             query_reactivar = """
                 SELECT pas.id_product_attribute, pa.reference
                 FROM ps_product_attribute_shop pas
-                INNER JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
-                INNER JOIN ps_stock_available sa 
-                    ON pa.id_product_attribute = sa.id_product_attribute AND sa.id_shop = 1
-                WHERE sa.quantity > 0 AND pas.id_shop = 99
+                INNER JOIN ps_product_attribute pa
+                    ON pas.id_product_attribute = pa.id_product_attribute
+                INNER JOIN ps_stock_available sa
+                    ON pa.id_product_attribute = sa.id_product_attribute
+                       AND sa.id_shop = 1
+                WHERE sa.quantity > 0
+                  AND pas.id_shop = 99
             """
             cursor.execute(query_reactivar)
             atributos = cursor.fetchall()
@@ -437,6 +599,7 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
             if atributos:
                 ids = [str(row[0]) for row in atributos]
                 logging.info(f"🔄 Reactivando {len(ids)} atributos con stock en PrestaShop")
+
                 for row in atributos:
                     logging.info(f"✔️ Atributo {row[0]} ({row[1]}) pasa a id_shop = 1")
 
@@ -444,7 +607,8 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
                 query_update = f"""
                     UPDATE ps_product_attribute_shop
                     SET id_shop = 1
-                    WHERE id_product_attribute IN ({placeholders}) AND id_shop = 99
+                    WHERE id_product_attribute IN ({placeholders})
+                      AND id_shop = 99
                 """
                 cursor.execute(query_update, ids)
                 conexion_prestashop.commit()
@@ -454,6 +618,109 @@ def verificar_referencias_no_actualizadas(id_proveedor, id_marca, conexion_prove
     except Exception as e:
         conexion_prestashop.rollback()
         logging.error(f"❌ Error al reactivar atributos con stock en PrestaShop: {e}")
+
+    # ✅ ✅ ✅ NUEVO BLOQUE FINAL → Desactivar productos simples solo si tampoco tienen stock en proveedor
+    try:
+        productos_simples_sin_stock = prestashop_df[
+            (prestashop_df['source'] == 'ps_product') &
+            (prestashop_df['quantity'] <= 0)
+        ]
+
+        referencias_a_verificar = []
+        eans_a_verificar = []
+        id_product_map = dict()
+
+        for _, row in productos_simples_sin_stock.iterrows():
+            ref = str(row['reference'])
+            ean = str(row['ean13']) if pd.notnull(row['ean13']) else None
+
+            ref_en_fichero = ref in referencias_fichero
+            ean_en_fichero = ean and ean in ean_fichero
+
+            if not ref_en_fichero and not ean_en_fichero:
+                referencias_a_verificar.append(ref)
+                if ean:
+                    eans_a_verificar.append(ean)
+                id_product_map[ref] = row['id_product']
+
+        productos_a_desactivar = []
+
+        if referencias_a_verificar or eans_a_verificar:
+            query_conditions = []
+            params = []
+
+            if referencias_a_verificar:
+                placeholders_refs = ', '.join(['%s'] * len(referencias_a_verificar))
+                query_conditions.append(f"referencia_producto IN ({placeholders_refs})")
+                params.extend(referencias_a_verificar)
+
+            if eans_a_verificar:
+                placeholders_eans = ', '.join(['%s'] * len(eans_a_verificar))
+                query_conditions.append(f"ean_producto IN ({placeholders_eans})")
+                params.extend(eans_a_verificar)
+
+            query_stock = f"""
+                SELECT referencia_producto, ean_producto, hay_stock_producto
+                FROM productos
+                WHERE id_proveedor = %s
+                  AND ({' OR '.join(query_conditions)})
+            """
+            params = [id_proveedor] + params
+
+            referencias_existentes = set()
+            referencias_con_stock = set()
+
+            eans_existentes = set()
+            eans_con_stock = set()
+
+            with conexion_proveedores.cursor() as cursor:
+                cursor.execute(query_stock, params)
+                rows = cursor.fetchall()
+                for ref_db, ean_db, hay_stock in rows:
+                    if ref_db:
+                        referencias_existentes.add(str(ref_db))
+                        if hay_stock and int(hay_stock) > 0:
+                            referencias_con_stock.add(str(ref_db))
+                    if ean_db:
+                        eans_existentes.add(str(ean_db))
+                        if hay_stock and int(hay_stock) > 0:
+                            eans_con_stock.add(str(ean_db))
+
+            for ref in referencias_a_verificar:
+                if ref in referencias_existentes:
+                    tiene_stock = ref in referencias_con_stock
+                    if not tiene_stock:
+                        id_product = id_product_map.get(ref)
+                        if id_product:
+                            productos_a_desactivar.append(id_product)
+                            logging.info(f"🚫 Producto simple {ref} sin stock en proveedor → se va a desactivar.")
+                    else:
+                        logging.info(f"✅ Producto simple {ref} se mantiene activo porque tiene stock en proveedor.")
+                else:
+                    logging.info(f"ℹ Producto simple {ref} no existe en la tabla productos del proveedor → NO SE TOCA.")
+
+        if productos_a_desactivar:
+            placeholders = ','.join(['%s'] * len(productos_a_desactivar))
+            with conexion_prestashop.cursor() as cursor:
+                cursor.execute(f"""
+                    UPDATE ps_product
+                    SET active = 0
+                    WHERE id_product IN ({placeholders})
+                """, productos_a_desactivar)
+
+                cursor.execute(f"""
+                    UPDATE ps_product_shop
+                    SET active = 0
+                    WHERE id_product IN ({placeholders})
+                """, productos_a_desactivar)
+
+                conexion_prestashop.commit()
+
+            for pid in productos_a_desactivar:
+                logging.info(f"🚫 Producto simple desactivado automáticamente: ID {pid}")
+
+    except Exception as e:
+        logging.error(f"❌ Error al desactivar productos simples sin stock: {e}")
 
 def descargar_y_procesar_archivo(config, excel_config, id_proveedor, conexion_proveedores):
     archivo_bytes = None

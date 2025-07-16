@@ -192,6 +192,34 @@ Sistema de gestión y control del inventario que permite la generación de repor
 - **Optimización del inventario** al analizar tendencias de ventas y compras.
 - **Reducción de errores** en la gestión de datos y control del almacén.
 
+### 7. Sistema de Generación y Gestión SEO
+
+Sistema diseñado para scrapear datos de productos desde URLs específicas y generar contenido SEO de forma automática mediante inteligencia artificial. Permite extraer datos como nombre del producto, descripciones, meta etiquetas e imágenes, y gestionar toda esta información en una interfaz web intuitiva. Además, sincroniza estos datos con la base de datos de PrestaShop, asegurando que las fichas de producto estén actualizadas y optimizadas para buscadores.
+
+#### Características Principales:
+- Scraping de datos desde URLs de productos (nombre, descripciones, imágenes, meta tags).
+- Generación automática de:
+  - Descripción larga SEO.
+  - Meta Title y Meta Description optimizados.
+  - Reseñas realistas mediante IA.
+- Edición y gestión de contenido SEO desde interfaz web.
+- Sincronización de datos con PrestaShop.
+- Panel interactivo con Bootstrap, DataTables y CKEditor.
+- Registro de logs para trazabilidad y errores.
+
+#### Tecnologías:
+- **Backend**: Python (Flask), Groq API.
+- **Frontend**: HTML, Bootstrap, DataTables, CKEditor, JavaScript, jQuery.
+- **Scraping**: BeautifulSoup.
+- **Bases de Datos**: MySQL (SEO) y PrestaShop.
+- **Servidor de producción**: Waitress.
+
+#### Beneficios:
+- Automatiza la creación de contenido SEO.
+- Garantiza que los datos en PrestaShop estén siempre actualizados y optimizados.
+- Mejora el posicionamiento orgánico de productos en buscadores.
+- Ahorra tiempo y reduce errores en la gestión SEO.
+
 ## 🛠️ Tecnologías Utilizadas
 
 ### Lenguajes de Programación

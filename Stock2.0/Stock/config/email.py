@@ -8,7 +8,7 @@ import logging
 smtp_server = 'servidor' # Poner aqui vuestro servidor mail
 smtp_port = 587
 smtp_user = 'correo' # Poner vuestro correo
-smtp_password = 'x78Yoe-x5Q-W'
+smtp_password = 'Password' # Poner vuestra contraseña
 email_destinatario = ['correo1', 'correo2'] # Lista a los que le llegaran los correos
 
 # Función para enviar registro al correo.

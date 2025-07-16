@@ -576,24 +576,23 @@ def reactivar_todos_los_atributos_desactivados(conexion_prestashop):
 
 # Función para activar atributos que tengan stock.
 def reactivar_atributos_con_stock(conexion_prestashop, conexion_proveedores, id_proveedor):
-
     cursor = conexion_prestashop.cursor()
 
     try:
-        # 1. Obtener atributos desactivados (id_shop = 99)
-        query_desactivados = '''
-            SELECT pa.id_product_attribute, pa.reference, pa.ean13, pa.id_product, sa.quantity
-            FROM ps_product_attribute_shop pas
-            JOIN ps_product_attribute pa ON pas.id_product_attribute = pa.id_product_attribute
+        # 1. Obtener TODOS los atributos del proveedor (activos o desactivados)
+        query_atributos = '''
+            SELECT pa.id_product_attribute, pa.reference, pa.ean13, pa.id_product,
+                   pas.id_shop, sa.quantity
+            FROM ps_product_attribute pa
+            JOIN ps_product_attribute_shop pas ON pa.id_product_attribute = pas.id_product_attribute
             LEFT JOIN ps_stock_available sa ON pa.id_product_attribute = sa.id_product_attribute AND sa.id_shop = 1
-            WHERE pas.id_shop = 99
         '''
-        df_atributos = pd.read_sql(query_desactivados, conexion_prestashop)
-        df_atributos['reference'] = df_atributos['reference'].astype(str)
-        df_atributos['ean13'] = df_atributos['ean13'].astype(str)
+        df_atributos = pd.read_sql(query_atributos, conexion_prestashop)
+        df_atributos['reference'] = df_atributos['reference'].fillna('').astype(str)
+        df_atributos['ean13'] = df_atributos['ean13'].fillna('').astype(str)
 
         if df_atributos.empty:
-            logging.info("✅ No hay atributos desactivados para verificar stock.")
+            logging.info("✅ No se encontraron atributos en la base de datos.")
             return
 
         # 2. Obtener referencias/eans del proveedor con stock
@@ -603,13 +602,13 @@ def reactivar_atributos_con_stock(conexion_prestashop, conexion_proveedores, id_
             WHERE id_proveedor = %s AND hay_stock_producto > 0
         """
         df_proveedor = pd.read_sql(query_stock_proveedor, conexion_proveedores, params=(id_proveedor,))
-        df_proveedor['referencia_producto'] = df_proveedor['referencia_producto'].astype(str)
-        df_proveedor['ean_producto'] = df_proveedor['ean_producto'].astype(str)
+        df_proveedor['referencia_producto'] = df_proveedor['referencia_producto'].fillna('').astype(str)
+        df_proveedor['ean_producto'] = df_proveedor['ean_producto'].fillna('').astype(str)
 
         referencias_stock = set(df_proveedor['referencia_producto'])
         eans_stock = set(df_proveedor['ean_producto'])
 
-        # 3. Filtrar atributos con stock en PrestaShop o en proveedor
+        # 3. Filtrar atributos que tengan stock en PrestaShop o proveedor
         df_filtrado = df_atributos[
             (df_atributos['quantity'] > 0) |
             (df_atributos['reference'].isin(referencias_stock)) |
@@ -617,42 +616,67 @@ def reactivar_atributos_con_stock(conexion_prestashop, conexion_proveedores, id_
         ]
 
         if df_filtrado.empty:
-            logging.info("✅ No hay atributos desactivados con stock para reactivar.")
+            logging.info("✅ No hay atributos con stock para reactivar ni activar productos padre.")
             return
 
-        ids_atributos = df_filtrado['id_product_attribute'].tolist()
-        ids_productos = df_filtrado['id_product'].unique().tolist()
-
-        # 4. Reactivar los atributos (id_shop = 1)
-        placeholders = ', '.join(['%s'] * len(ids_atributos))
-        cursor.execute(f"""
-            UPDATE ps_product_attribute_shop
-            SET id_shop = 1
-            WHERE id_product_attribute IN ({placeholders})
-        """, tuple(ids_atributos))
-
-        # 5. Reactivar productos y permitir compra
-        if ids_productos:
-            placeholders_prod = ', '.join(['%s'] * len(ids_productos))
+        # 4. Reactivar atributos desactivados (id_shop = 99 → id_shop = 1)
+        df_a_reactivar = df_filtrado[df_filtrado['id_shop'] == 99]
+        if not df_a_reactivar.empty:
+            ids_atributos = df_a_reactivar['id_product_attribute'].tolist()
+            placeholders = ', '.join(['%s'] * len(ids_atributos))
             cursor.execute(f"""
-                UPDATE ps_product
-                SET available_for_order = 1, visibility = 'both'
-                WHERE id_product IN ({placeholders_prod})
-            """, tuple(ids_productos))
+                UPDATE ps_product_attribute_shop
+                SET id_shop = 1
+                WHERE id_product_attribute IN ({placeholders})
+            """, tuple(ids_atributos))
 
-            cursor.execute(f"""
-                UPDATE ps_product_shop
-                SET available_for_order = 1, visibility = 'both'
-                WHERE id_product IN ({placeholders_prod})
-            """, tuple(ids_productos))
+            for ref in df_a_reactivar['reference']:
+                logging.info(f"🔄 Atributo reactivado (estaba en id_shop=99): {ref}")
+                logger_funciones_especificas.info(f"🔄 Atributo reactivado (estaba en id_shop=99): {ref}")
+
+        # ✅ NUEVO → Filtrar packs en base a referencia padre
+        ids_productos_detectados = df_filtrado['id_product'].unique().tolist()
+
+        if ids_productos_detectados:
+            placeholders = ', '.join(['%s'] * len(ids_productos_detectados))
+
+            # Traer referencias padre
+            query_refs = f"""
+                SELECT id_product, reference
+                FROM ps_product
+                WHERE id_product IN ({placeholders})
+            """
+            df_refs = pd.read_sql(query_refs, conexion_prestashop, params=tuple(ids_productos_detectados))
+            df_refs['reference'] = df_refs['reference'].fillna('').astype(str)
+
+            # Excluir referencias que empiezan por pack_
+            df_refs_filtrado = df_refs[~df_refs['reference'].str.startswith('pack_')]
+
+            ids_productos_a_activar = df_refs_filtrado['id_product'].tolist()
+
+            if ids_productos_a_activar:
+                placeholders_prod = ', '.join(['%s'] * len(ids_productos_a_activar))
+                cursor.execute(f"""
+                    UPDATE ps_product
+                    SET active = 1, available_for_order = 1
+                    WHERE id_product IN ({placeholders_prod})
+                """, tuple(ids_productos_a_activar))
+
+                cursor.execute(f"""
+                    UPDATE ps_product_shop
+                    SET active = 1, available_for_order = 1
+                    WHERE id_product IN ({placeholders_prod})
+                """, tuple(ids_productos_a_activar))
+
+                for pid in ids_productos_a_activar:
+                    logging.info(f"✅ Producto padre activado: id_product = {pid}")
+                    logger_funciones_especificas.info(f"✅ Producto padre activado: id_product = {pid}")
+            else:
+                logging.info("✅ No hay productos padre a activar tras filtrar packs.")
 
         conexion_prestashop.commit()
 
-        for ref in df_filtrado['reference']:
-            logging.info(f"🔄 Atributo reactivado: {ref}")
-            logger_funciones_especificas.info(f"🔄 Atributo reactivado: {ref}")
-
-        logging.info(f"✅ Se han reactivado {len(ids_atributos)} atributos con stock para proveedor {id_proveedor}.")
+        logging.info(f"✅ Se ha completado la reactivación de atributos y productos padres para proveedor {id_proveedor}.")
 
     except Exception as e:
         conexion_prestashop.rollback()
@@ -660,3 +684,117 @@ def reactivar_atributos_con_stock(conexion_prestashop, conexion_proveedores, id_
         logger_funciones_especificas.error(f"❌ Error al reactivar atributos con stock: {e}")
     finally:
         cursor.close()
+        
+# Función para detectar productos obsoletos y desactivarlos.
+def detectar_productos_obsoletos_para_desactivar(conexion_prestashop, conexion_proveedores):
+    from datetime import datetime, timedelta
+
+    try:
+        logging.info("🔍 Buscando productos obsoletos para desactivar...")
+
+        # Obtener fecha límite
+        fecha_limite = datetime.now() - timedelta(days=20)
+
+        # 1️⃣ Obtener combinaciones de PrestaShop con su producto padre y stock
+        query_combinaciones = """
+            SELECT
+                p.id_product,
+                pa.id_product_attribute,
+                pa.reference,
+                pa.ean13,
+                sa.quantity,
+                p.reference AS ref_padre
+            FROM ps_product_attribute pa
+            JOIN ps_product p ON pa.id_product = p.id_product
+            JOIN ps_stock_available sa ON sa.id_product_attribute = pa.id_product_attribute AND sa.id_shop = 1
+            WHERE pa.reference IS NOT NULL AND pa.reference != ''
+        """
+        combinaciones_df = pd.read_sql(query_combinaciones, conexion_prestashop)
+        combinaciones_df['reference'] = combinaciones_df['reference'].astype(str)
+        combinaciones_df['ean13'] = combinaciones_df['ean13'].astype(str)
+
+        # 2️⃣ Obtener datos del proveedor
+        query_proveedor = """
+            SELECT referencia_producto, ean_producto, hay_stock_producto, fecha_actualizacion_producto
+            FROM productos
+        """
+        proveedor_df = pd.read_sql(query_proveedor, conexion_proveedores)
+        proveedor_df['referencia_producto'] = proveedor_df['referencia_producto'].astype(str)
+        proveedor_df['ean_producto'] = proveedor_df['ean_producto'].astype(str)
+        proveedor_df['fecha_actualizacion_producto'] = pd.to_datetime(
+            proveedor_df['fecha_actualizacion_producto'], errors='coerce'
+        )
+
+        # 3️⃣ Fusionar por referencia y ean
+        combinaciones_df = pd.merge(
+            combinaciones_df,
+            proveedor_df,
+            how='left',
+            left_on='reference',
+            right_on='referencia_producto'
+        )
+
+        combinaciones_df = pd.merge(
+            combinaciones_df,
+            proveedor_df,
+            how='left',
+            left_on='ean13',
+            right_on='ean_producto',
+            suffixes=('', '_ean')
+        )
+
+        # Elegir valores no nulos entre los dos merges
+        combinaciones_df['hay_stock'] = combinaciones_df['hay_stock_producto'].combine_first(
+            combinaciones_df['hay_stock_producto_ean']
+        ).fillna(0)
+        combinaciones_df['fecha_actualizacion'] = combinaciones_df['fecha_actualizacion_producto'].combine_first(
+            combinaciones_df['fecha_actualizacion_producto_ean']
+        )
+
+        # 4️⃣ Filtrar combinaciones sin stock y sin actualizar en más de 20 días
+        combinaciones_df['fecha_actualizacion'] = pd.to_datetime(combinaciones_df['fecha_actualizacion'], errors='coerce')
+        combinaciones_df['cumple_obsoleto'] = (
+            (combinaciones_df['quantity'] <= 0) &
+            (combinaciones_df['hay_stock'] == 0) &
+            (combinaciones_df['fecha_actualizacion'] < fecha_limite)
+        )
+
+        # 5️⃣ Agrupar por producto padre: si todas las combinaciones están obsoletas => desactivar
+        resumen = combinaciones_df.groupby('id_product')['cumple_obsoleto'].all().reset_index()
+        productos_a_desactivar = resumen[resumen['cumple_obsoleto'] == True]['id_product'].tolist()
+
+        if not productos_a_desactivar:
+            logging.info("✅ No hay productos obsoletos a desactivar.")
+            return pd.DataFrame()
+
+        # 6️⃣ Confirmar que están activos antes de desactivar
+        cursor = conexion_prestashop.cursor()
+        placeholders = ','.join(['%s'] * len(productos_a_desactivar))
+        query_activos = f"""
+            SELECT id_product FROM ps_product
+            WHERE id_product IN ({placeholders}) AND active = 1
+        """
+        cursor.execute(query_activos, productos_a_desactivar)
+        activos = [row[0] for row in cursor.fetchall()]
+
+        if not activos:
+            logging.info("✅ No hay productos activos que cumplan criterios de obsoletos.")
+            return pd.DataFrame()
+
+        # 7️⃣ Desactivar productos
+        placeholders = ','.join(['%s'] * len(activos))
+        cursor.execute(f"UPDATE ps_product SET active = 0 WHERE id_product IN ({placeholders})", activos)
+        cursor.execute(f"UPDATE ps_product_shop SET active = 0 WHERE id_product IN ({placeholders})", activos)
+        conexion_prestashop.commit()
+
+        for pid in activos:
+            logging.info(f"🚫 Producto desactivado por obsoleto: ID {pid}")
+            logger_funciones_especificas.info(f"🚫 Producto desactivado por obsoleto: ID {pid}")
+
+        logging.info(f"📆 Productos obsoletos detectados: {len(activos)}")
+
+        return combinaciones_df[combinaciones_df['id_product'].isin(activos)]
+
+    except Exception as e:
+        logging.error(f"❌ Error en detectar_productos_obsoletos_para_desactivar: {e}")
+        return pd.DataFrame()
