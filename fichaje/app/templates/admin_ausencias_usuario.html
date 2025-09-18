@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Vacaciones de {{ usuario.nombre }}{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<h2 class="mb-4 text-center">Vacaciones y ausencias de {{ usuario.nombre }}</h2>
+
+<!-- Botones de vista + saldo -->
+<div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-wrap">
+    <button class="btn btn-outline-dark" onclick="mostrarVista('tabla')">📋 Tabla</button>
+    <button class="btn btn-outline-primary" onclick="mostrarVista('calendario')">🗓️ Calendario</button>
+    <span class="badge {{ 'bg-danger' if saldo_disponible <= 0 else 'bg-success' }} fs-6">
+        {{ saldo_disponible }} días disponibles
+    </span>
+</div>
+
+<!-- Vista tabla -->
+<div id="vista-tabla">
+    <!-- Tabla escritorio -->
+    <div class="table-responsive d-none d-md-block px-2">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Observaciones</th>
+                    <th>Origen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in ausencias %}
+                <tr>
+                    <td class="text-center">{{ a.fecha }}</td>
+                    <td class="text-center">{{ a.tipo }}</td>
+                    <td>{{ a.observaciones }}</td>
+                    <td class="text-center">
+                        {% if a.creado_por_admin %}
+                            <span class="badge bg-danger">🛠️ Admin</span>
+                        {% else %}
+                            <span class="text-muted">Empleado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tarjetas móvil -->
+    <div class="d-block d-md-none px-2">
+        {% for a in ausencias %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <p class="fw-bold mb-1">{{ a.fecha }}</p>
+                <p class="mb-1"><strong>Tipo:</strong> {{ a.tipo }}</p>
+                {% if a.observaciones %}
+                <p class="mb-1"><strong>Observaciones:</strong> {{ a.observaciones }}</p>
+                {% endif %}
+                <p class="mb-0"><strong>Origen:</strong>
+                    {% if a.creado_por_admin %}
+                        <span class="badge bg-danger">🛠️ Admin</span>
+                    {% else %}
+                        <span class="text-muted">Empleado</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Vista calendario -->
+<div id="vista-calendario" style="display: none;">
+    <div class="d-flex justify-content-center mt-3">
+        <div class="p-3 border rounded shadow-sm bg-white" style="max-width: 100%; width: 340px;">
+            <div id="calendario_ausencias"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón volver -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-secondary">⬅️ Volver a usuarios</a>
+</div>
+
+<!-- Script para alternar vistas -->
+<script>
+    function mostrarVista(vista) {
+        document.getElementById("vista-tabla").style.display = (vista === 'tabla') ? 'block' : 'none';
+        document.getElementById("vista-calendario").style.display = (vista === 'calendario') ? 'block' : 'none';
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const fechasAusencias = {{ ausencias | map(attribute='fecha_iso') | list | tojson | safe }};
+
+        flatpickr("#calendario_ausencias", {
+            inline: true,
+            locale: "es",
+            defaultDate: fechasAusencias,
+            disable: [
+                function (date) {
+                    return !fechasAusencias.includes(flatpickr.formatDate(date, "Y-m-d"));
+                }
+            ],
+            showMonths: 1
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Registrar ausencia{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título -->
+<div class="text-center mt-3">
+    <h4 class="fw-bold">Registrar ausencia para {{ usuario.nombre }}</h4>
+</div>
+
+<!-- Formulario -->
+<div class="card shadow-sm mx-auto my-4 p-4" style="max-width: 800px;">
+    <form method="POST" class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Desde:</label>
+            <input type="date" name="fecha_desde" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Hasta:</label>
+            <input type="date" name="fecha_hasta" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Tipo:</label>
+            <select name="tipo" class="form-select" required>
+                <option value="">Selecciona...</option>
+                <option value="Vacaciones">Vacaciones</option>
+                <option value="Enfermedad">Enfermedad</option>
+                <option value="Asuntos propios">Asuntos propios</option>
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Observaciones:</label>
+            <input type="text" name="observaciones" class="form-control" maxlength="255">
+        </div>
+        <div class="col-12 d-grid">
+            <button type="submit" class="btn btn-primary mt-2">✅ Registrar ausencia</button>
+        </div>
+    </form>
+</div>
+
+<!-- Botón volver -->
+<div class="text-center mb-4">
+    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-secondary">⬅️ Volver al panel de usuarios</a>
+</div>
+{% endblock %}

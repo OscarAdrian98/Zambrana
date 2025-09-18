@@ -1,0 +1,5 @@
+cd C:\Users\Zambrana\Desktop\fichaje
+PythonFichaje.exe install
+PythonFichaje.exe start
+PythonFichaje.exe stop
+PythonFichaje.exe uninstall

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Vacaciones{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título + botón -->
+<div class="d-flex justify-content-between align-items-center mt-3 px-3">
+    <h4 class="fw-bold mb-0">Vacaciones</h4>
+    <button id="btnMostrarFormulario" class="btn btn-danger rounded-circle">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+</div>
+
+<!-- Resumen de saldo -->
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body d-flex justify-content-around text-center">
+        <div>
+            <div class="fw-bold fs-5 text-danger">{{ saldo_disponible }}</div>
+            <div class="text-muted small">Disponibles</div>
+        </div>
+        <div>
+            <div class="fw-bold fs-5 text-warning">{{ saldo_solicitado }}</div>
+            <div class="text-muted small">Solicitados</div>
+        </div>
+        <div>
+            <div class="fw-bold fs-5 text-success">{{ saldo_utilizado }}</div>
+            <div class="text-muted small">Utilizados</div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario -->
+<div id="formularioAusencia" class="card p-4 shadow-sm mb-4 mx-auto d-none" style="max-width: 900px;">
+    <form method="POST" class="row g-3">
+        {% if editar_tramo %}
+            <input type="hidden" name="editar_fecha_inicio" value="{{ editar_tramo.fecha_inicio }}">
+            <input type="hidden" name="editar_fecha_fin" value="{{ editar_tramo.fecha_fin }}">
+            <input type="hidden" name="editar_tipo" value="{{ editar_tramo.tipo }}">
+            <input type="hidden" name="editar_observaciones" value="{{ editar_tramo.observaciones }}">
+        {% endif %}
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Desde:</label>
+            <input type="date" name="fecha_desde" class="form-control" required
+                   value="{{ editar_tramo.fecha_inicio if editar_tramo }}">
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label">Hasta:</label>
+            <input type="date" name="fecha_hasta" class="form-control" required
+                   value="{{ editar_tramo.fecha_fin if editar_tramo }}">
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label">Tipo:</label>
+            <select name="tipo" class="form-select" required>
+                <option value="">Selecciona...</option>
+                <option value="Vacaciones" {% if editar_tramo and editar_tramo.tipo == 'Vacaciones' %}selected{% endif %}>Vacaciones</option>
+                <option value="Enfermedad" {% if editar_tramo and editar_tramo.tipo == 'Enfermedad' %}selected{% endif %}>Enfermedad</option>
+                <option value="Asuntos propios" {% if editar_tramo and editar_tramo.tipo == 'Asuntos propios' %}selected{% endif %}>Asuntos propios</option>
+            </select>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Observaciones:</label>
+            <input type="text" name="observaciones" class="form-control" maxlength="255"
+                   value="{{ editar_tramo.observaciones if editar_tramo }}">
+        </div>
+        <div class="col-12 d-grid">
+            <button type="submit" class="btn btn-primary mt-3">
+                {% if editar_tramo %}💾 Guardar cambios{% else %}➕ Añadir ausencia{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Mis solicitudes -->
+<div class="mx-auto" style="max-width: 900px;">
+    <h5 class="fw-semibold mb-3 px-2">Mis solicitudes</h5>
+    {% if ausencias_actuales %}
+        {% for a in ausencias_actuales %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold">{{ a.tipo }}</span>
+                    <span class="badge 
+                        {% if a.estado == 'pendiente' %}bg-warning text-dark
+                        {% elif a.estado == 'utilizadas' %}bg-success
+                        {% else %}bg-secondary
+                        {% endif %}">
+                        {{ a.estado }}
+                    </span>
+                </div>
+                <div class="text-muted small">
+                    {{ a.fecha_texto }}
+                    {% if a.fecha != a.fecha_hasta %}
+                        - {{ a.fecha_hasta_texto }} ({{ a.dias }} día{{ 's' if a.dias > 1 else '' }})
+                    {% endif %}
+                </div>
+                {% if a.observaciones or a.creado_por_admin %}
+                    <div class="mt-1 text-muted">
+                        {{ a.observaciones }}
+                        {% if a.creado_por_admin %}
+                            <span class="badge bg-dark ms-2">Creado por admin</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                {% if a.creado_por_admin %}
+                    <div class="text-muted small fst-italic mt-1">
+                        <i class="bi bi-person-gear"></i> Registrado por administración
+                    </div>
+                {% endif %}
+
+                {% if a.fecha >= current_date %}
+                <!-- Botones de Editar y Borrar (solo si la fecha es futura o de hoy) -->
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <form method="POST" action="{{ url_for('editar_ausencia_usuario') }}">
+                        <input type="hidden" name="fecha_inicio" value="{{ a.fecha }}">
+                        <input type="hidden" name="fecha_fin" value="{{ a.fecha_hasta }}">
+                        <input type="hidden" name="tipo" value="{{ a.tipo }}">
+                        <input type="hidden" name="observaciones" value="{{ a.observaciones }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">✏️ Editar</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('eliminar_ausencia_usuario') }}" onsubmit="return confirm('¿Eliminar este tramo completo?');">
+                        <input type="hidden" name="fecha_inicio" value="{{ a.fecha }}">
+                        <input type="hidden" name="fecha_fin" value="{{ a.fecha_hasta }}">
+                        <input type="hidden" name="tipo" value="{{ a.tipo }}">
+                        <input type="hidden" name="observaciones" value="{{ a.observaciones }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Borrar</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center text-muted">No hay ausencias registradas este año.</div>
+    {% endif %}
+</div>
+
+<!-- Navegación inferior -->
+<nav class="navbar fixed-bottom bg-white border-top d-flex justify-content-around py-2">
+    <a href="{{ url_for('fichar') }}" class="text-center {% if request.path == '/fichar' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-house-door-fill"></i></div>
+        <div style="font-size: 0.9rem;">Inicio</div>
+    </a>
+    <a href="{{ url_for('control_horario') }}" class="text-center {% if request.path == '/control-horario' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-clock-history"></i></div>
+        <div style="font-size: 0.9rem;">Horarios</div>
+    </a>
+    <a href="{{ url_for('resumen') }}" class="text-center {% if request.path == '/resumen' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar3"></i></div>
+        <div style="font-size: 0.9rem;">Calendario</div>
+    </a>
+    <a href="{{ url_for('mis_ausencias') }}" class="text-center {% if request.path == '/mis-ausencias' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar-check"></i></div>
+        <div style="font-size: 0.9rem;">Vacaciones</div>
+    </a>
+    <a href="{{ url_for('perfil') }}" class="text-center {% if request.path == '/perfil' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-person-circle"></i></div>
+        <div style="font-size: 0.9rem;">Perfil</div>
+    </a>
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_fichajes') }}" class="text-center {% if '/admin' in request.path %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-tools"></i></div>
+        <div style="font-size: 0.9rem;">Admin</div>
+    </a>
+    {% endif %}
+</nav>
+
+<!-- Script para mostrar/ocultar formulario -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const boton = document.getElementById("btnMostrarFormulario");
+        const formulario = document.getElementById("formularioAusencia");
+
+        boton.addEventListener("click", function () {
+            formulario.classList.toggle("d-none");
+            boton.classList.toggle("btn-danger");
+            boton.classList.toggle("btn-secondary");
+        });
+
+        // Si hay edición activa, mostrar el formulario automáticamente
+        {% if editar_tramo %}
+            formulario.classList.remove("d-none");
+            boton.classList.remove("btn-danger");
+            boton.classList.add("btn-secondary");
+        {% endif %}
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Diario{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<h2 class="mb-4 text-center">📊 Dashboard de asistencia - {{ hoy.strftime('%d/%m/%Y') }}</h2>
+
+<!-- Tabla visible solo en escritorio -->
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-bordered table-hover align-middle text-nowrap">
+        <thead class="table-dark text-center">
+            <tr>
+                <th>Empleado</th>
+                <th>Estado</th>
+                <th>Entrada Mañana</th>
+                <th>Salida Mañana</th>
+                <th>Entrada Tarde</th>
+                <th>Salida Tarde</th>
+                <th>Total Hoy</th>
+                <th>Ausencia</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in datos %}
+            <tr
+                {% if "Dentro" in row.estado %}
+                    class="table-success"
+                {% elif "Fuera" in row.estado %}
+                    class="table-danger"
+                {% elif "Sin fichaje" in row.estado %}
+                    class="table-light"
+                {% endif %}
+            >
+                <td>{{ row.usuario }}</td>
+                <td class="text-center">{{ row.estado }}</td>
+                <td class="text-center">{{ row.entrada_m or '-' }}</td>
+                <td class="text-center">{{ row.salida_m or '-' }}</td>
+                <td class="text-center">{{ row.entrada_t or '-' }}</td>
+                <td class="text-center">{{ row.salida_t or '-' }}</td>
+                <td class="text-center">{{ row.total or '-' }}</td>
+                <td class="text-center">
+                    {% if row.ausencia == 'Vacaciones' %}
+                        🏖️ Vacaciones
+                    {% elif row.ausencia == 'Enfermedad' %}
+                        🤒 Enfermedad
+                    {% elif row.ausencia == 'Asuntos propios' %}
+                        📝 Asuntos propios
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Vista tipo tarjeta para móvil -->
+<div class="d-block d-md-none px-2">
+    {% for row in datos %}
+    <div class="card mb-3 shadow-sm 
+        {% if "Dentro" in row.estado %}
+            border-success
+        {% elif "Fuera" in row.estado %}
+            border-danger
+        {% elif "Sin fichaje" in row.estado %}
+            border-secondary
+        {% endif %}
+    ">
+        <div class="card-body">
+            <h5 class="fw-bold">{{ row.usuario }}</h5>
+            <p class="mb-1"><strong>Estado:</strong> {{ row.estado }}</p>
+            <p class="mb-1"><strong>Entrada Mañana:</strong> {{ row.entrada_m or '-' }}</p>
+            <p class="mb-1"><strong>Salida Mañana:</strong> {{ row.salida_m or '-' }}</p>
+            <p class="mb-1"><strong>Entrada Tarde:</strong> {{ row.entrada_t or '-' }}</p>
+            <p class="mb-1"><strong>Salida Tarde:</strong> {{ row.salida_t or '-' }}</p>
+            <p class="mb-1"><strong>Total trabajado:</strong> {{ row.total or '-' }}</p>
+            <p class="mb-0"><strong>Ausencia:</strong>
+                {% if row.ausencia == 'Vacaciones' %}
+                    🏖️ Vacaciones
+                {% elif row.ausencia == 'Enfermedad' %}
+                    🤒 Enfermedad
+                {% elif row.ausencia == 'Asuntos propios' %}
+                    📝 Asuntos propios
+                {% else %}
+                    -
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-secondary">⬅️ Volver a usuarios</a>
+</div>
+{% endblock %}

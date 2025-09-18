@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Mi perfil{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título -->
+<div class="text-center mt-3">
+    <h4 class="fw-bold">Mi perfil</h4>
+</div>
+
+<!-- Bloque de nombre -->
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body text-center">
+        <h5 class="fw-bold">{{ current_user.nombre }}</h5>
+        <p class="text-muted mb-0">{{ current_user.puesto }}</p>
+    </div>
+</div>
+
+<!-- Información personal -->
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">Información personal</h6>
+        <p class="mb-1"><strong>Email:</strong> {{ current_user.email }}</p>
+        <p class="mb-0"><strong>Puesto:</strong> {{ current_user.puesto }}</p>
+    </div>
+</div>
+
+<!-- Selección de sábados asignados (dos columnas) -->
+{% if mostrar_sabados %}
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">Sábados que asistirás este mes</h6>
+        <form method="POST">
+            <div class="row">
+                {% for sabado in sabados %}
+                <div class="col-6 mb-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="sabados[]" id="sabado{{ loop.index }}"
+                               value="{{ sabado.strftime('%Y-%m-%d') }}"
+                               {% if sabado in asignados %}checked{% endif %}>
+                        <label class="form-check-label" for="sabado{{ loop.index }}">
+                            {{ sabado.strftime('%d/%m/%Y') }}
+                        </label>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-3">Guardar sábados</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Configuración -->
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body">
+        <h6 class="fw-bold mb-3">Configuración</h6>
+
+        <!-- Botón para mostrar el formulario -->
+        <button class="btn btn-outline-secondary w-100 mb-3" type="button" onclick="toggleFormularioContrasena()">
+            Cambiar contraseña
+        </button>
+
+        <!-- Formulario oculto -->
+        <form method="POST" action="{{ url_for('cambiar_contrasena') }}" id="formulario-contrasena" style="display: none;">
+            <div class="mb-3">
+                <label for="nueva_contrasena" class="form-label">Nueva contraseña</label>
+                <input type="password" class="form-control" name="nueva_contrasena" id="nueva_contrasena">
+            </div>
+            <div class="mb-3">
+                <label for="confirmar_contrasena" class="form-label">Confirmar contraseña</label>
+                <input type="password" class="form-control" name="confirmar_contrasena" id="confirmar_contrasena">
+            </div>
+            <button type="submit" class="btn btn-dark w-100">Guardar contraseña</button>
+        </form>
+
+        <hr>
+        <p class="text-danger mb-0">
+            <a href="{{ url_for('logout') }}" class="text-danger text-decoration-none">Cerrar sesión →</a>
+        </p>
+    </div>
+</div>
+
+<script>
+    function toggleFormularioContrasena() {
+        const form = document.getElementById("formulario-contrasena");
+        form.style.display = (form.style.display === "none") ? "block" : "none";
+    }
+</script>
+
+<!-- Menú inferior -->
+<nav class="navbar fixed-bottom bg-white border-top d-flex justify-content-around py-2">
+    <a href="{{ url_for('fichar') }}" class="text-center {% if request.path == '/fichar' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-house-door-fill"></i></div>
+        <div style="font-size: 0.9rem;">Inicio</div>
+    </a>
+    <a href="{{ url_for('control_horario') }}" class="text-center {% if request.path == '/control-horario' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-clock-history"></i></div>
+        <div style="font-size: 0.9rem;">Horarios</div>
+    </a>
+    <a href="{{ url_for('resumen') }}" class="text-center {% if request.path == '/resumen' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar3"></i></div>
+        <div style="font-size: 0.9rem;">Calendario</div>
+    </a>
+    <a href="{{ url_for('mis_ausencias') }}" class="text-center {% if request.path == '/mis-ausencias' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar-check"></i></div>
+        <div style="font-size: 0.9rem;">Vacaciones</div>
+    </a>
+    <a href="{{ url_for('perfil') }}" class="text-center {% if request.path == '/perfil' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-person-circle"></i></div>
+        <div style="font-size: 0.9rem;">Perfil</div>
+    </a>
+
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_fichajes') }}" class="text-center {% if '/admin' in request.path %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-tools"></i></div>
+        <div style="font-size: 0.9rem;">Admin</div>
+    </a>
+    {% endif %}
+
+</nav>
+{% endblock %}

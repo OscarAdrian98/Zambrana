@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 5px; text-align: center; }
+        th { background-color: #eee; }
+        h2 { text-align: center; }
+        .total { margin-top: 20px; text-align: right; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Resumen de horas de {{ usuario.nombre }}</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Registros del día</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in datos %}
+            <tr>
+                <td>{{ row.fecha }}</td>
+                <td>
+                    {% for r in row.registros %}
+                        {{ r }}<br>
+                    {% endfor %}
+                </td>
+                <td>{{ row.total or '-' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="total">Total acumulado: {{ total_general }}</p>
+</body>
+</html>

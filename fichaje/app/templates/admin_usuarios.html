@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Usuarios registrados{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título y botón de dashboard -->
+<div class="d-flex justify-content-between align-items-center mt-3 px-3 flex-wrap gap-2">
+    <h2 class="mb-0">Usuarios registrados</h2>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-dark">
+        📊 Ver Dashboard diario
+    </a>
+</div>
+
+<!-- Tabla para escritorio -->
+<div class="table-responsive mt-3 px-2 d-none d-md-block">
+    <table class="table table-bordered table-striped table-sm align-middle text-nowrap">
+        <thead class="table-dark text-center">
+            <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in usuarios %}
+            <tr>
+                <td>{{ user.nombre }}</td>
+                <td>{{ user.email }}</td>
+                <td class="text-center">
+                    <div class="d-flex flex-wrap justify-content-center gap-1">
+                        <a href="{{ url_for('admin_fichajes_usuario', usuario_id=user.id) }}" class="btn btn-sm btn-primary">
+                            Fichajes
+                        </a>
+                        <a href="{{ url_for('admin_ausencias_usuario', usuario_id=user.id) }}" class="btn btn-sm btn-warning">
+                            Vacaciones
+                        </a>
+                        <a href="{{ url_for('admin_registrar_ausencia', usuario_id=user.id) }}" class="btn btn-sm btn-danger">
+                            Ausencia
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Vista tipo tarjeta para móviles -->
+<div class="d-block d-md-none mt-3 px-2">
+    {% for user in usuarios %}
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h5 class="fw-bold mb-1">{{ user.nombre }}</h5>
+            <p class="mb-2 text-muted"><i class="bi bi-envelope"></i> {{ user.email }}</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('admin_fichajes_usuario', usuario_id=user.id) }}" class="btn btn-sm btn-primary w-100">
+                    Fichajes
+                </a>
+                <a href="{{ url_for('admin_ausencias_usuario', usuario_id=user.id) }}" class="btn btn-sm btn-warning w-100">
+                    Vacaciones
+                </a>
+                <a href="{{ url_for('admin_registrar_ausencia', usuario_id=user.id) }}" class="btn btn-sm btn-danger w-100">
+                    Ausencia
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Botón volver -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('fichar') }}" class="btn btn-secondary">⬅️ Volver</a>
+</div>
+{% endblock %}

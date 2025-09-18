@@ -1,0 +1,179 @@
+/* Fondo general más suave */
+body {
+    background-color: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Título principal */
+h2 {
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+/* Tarjeta moderna para el formulario de fichaje */
+.card.fichaje-form {
+    border-left: 6px solid #dc3545;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background-color: #fff;
+    padding: 2rem;
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+/* Encabezados de turno */
+.fichaje-form h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-top: 2rem;
+    position: relative;
+    padding-left: 2rem;
+}
+
+.fichaje-form h5::before {
+    content: "🕒";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1.2rem;
+}
+
+/* Botones limpiar turno */
+.btn.btn-link {
+    font-size: 0.85rem;
+    padding-left: 0;
+    color: #dc3545;
+}
+
+.btn.btn-link:hover {
+    text-decoration: underline;
+    color: #b02a37;
+}
+
+/* Botón guardar moderno */
+.btn-guardar {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: #007bff;
+    border-color: #007bff;
+    font-size: 1.05rem;
+}
+
+.btn-guardar:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+/* Ajustes generales de formularios */
+.fichaje-form .form-label {
+    font-weight: 500;
+    color: #555;
+}
+
+input.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Ajuste mínimo de ancho para botones de abajo */
+.mt-4 a.btn {
+    min-width: 140px;
+    font-weight: 500;
+}
+
+/* Estilo para mensajes flash */
+.alert-info {
+    border-left: 5px solid #0dcaf0;
+    background-color: #e7f9fc;
+    color: #055160;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0.375rem;
+}
+/* Estilo centrado y moderno para login */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 75vh;
+}
+
+.login-card {
+    max-width: 400px;
+    width: 100%;
+    border-left: 6px solid #0d6efd;
+    border-radius: 1rem;
+    background-color: #ffffff;
+}
+
+.btn-login {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1.05rem;
+}
+.btn.btn-success.btn-login {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn.btn-success.btn-login:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+/* Estilo para la sección de ausencias */
+.ausencias-card {
+    border-left: 6px solid #ffc107;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background-color: #fff;
+    padding: 2rem;
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+/* Tabla de ausencias más estilizada */
+.table-ausencias thead th {
+    background-color: #343a40;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+}
+
+.table-ausencias td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+/* Botón añadir ausencia */
+.btn-añadir-ausencia {
+    font-weight: 600;
+    font-size: 1rem;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-añadir-ausencia:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.navbar a {
+    text-decoration: none;
+    color: #6c757d;
+}
+.navbar a:hover {
+    color: #0d6efd;
+}
+.navbar .text-primary {
+    color: #0d6efd !important;
+}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Control de horario{% endblock %}
+
+{% block content %}
+<!-- Encabezado -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título -->
+<div class="text-center mt-3">
+    <h4 class="fw-bold">Control de horario</h4>
+</div>
+
+<!-- Estado actual -->
+<div class="card shadow-sm mx-auto my-4">
+    <div class="card-body text-center">
+        <div class="d-flex justify-content-between">
+            <span class="fw-bold">Estado actual:</span>
+            <span class="badge bg-{{ 'success' if estado == 'Dentro' else 'secondary' }}">{{ estado }}</span>
+        </div>
+        <div class="mt-2 text-start">
+            <p class="mb-1">Entrada: <strong>{{ ultima_entrada.strftime('%H:%M') if ultima_entrada else '--:--' }}</strong></p>
+            <p class="mb-1">Salida: <strong>{{ ultima_salida.strftime('%H:%M') if ultima_salida else '--:--' }}</strong></p>
+            <p class="mb-0 text-danger fw-bold">
+                Horas trabajadas: {{ '%02d h %02d m' % (horas, minutos) }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Historial reciente -->
+<div class="card shadow-sm mx-auto mb-5">
+    <div class="card-body">
+        <h6 class="fw-bold text-center mb-3">Historial reciente</h6>
+
+        {% if tramos %}
+            {% for tramo in tramos %}
+                <div class="border rounded bg-light p-3 mb-3 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>{{ hoy.strftime('%d/%m/%Y') }}</strong>
+                        <span class="text-danger fw-bold">{{ tramo.duracion }}h</span>
+                    </div>
+                    <div class="text-muted small">
+                        Entrada: {{ tramo.inicio }}<br>
+                        Salida: {{ tramo.fin }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted text-center">No hay registros hoy.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Botones de navegación -->
+<nav class="navbar fixed-bottom bg-white border-top d-flex justify-content-around py-2">
+    <a href="{{ url_for('fichar') }}" class="text-center {% if request.path == '/fichar' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-house-door-fill"></i></div>
+        <div style="font-size: 0.9rem;">Inicio</div>
+    </a>
+    <a href="{{ url_for('control_horario') }}" class="text-center {% if request.path == '/control-horario' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-clock-history"></i></div>
+        <div style="font-size: 0.9rem;">Horarios</div>
+    </a>
+    <a href="{{ url_for('resumen') }}" class="text-center {% if request.path == '/resumen' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar3"></i></div>
+        <div style="font-size: 0.9rem;">Calendario</div>
+    </a>
+    <a href="{{ url_for('mis_ausencias') }}" class="text-center {% if request.path == '/mis-ausencias' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar-check"></i></div>
+        <div style="font-size: 0.9rem;">Vacaciones</div>
+    </a>
+    <a href="{{ url_for('perfil') }}" class="text-center {% if request.path == '/perfil' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-person-circle"></i></div>
+        <div style="font-size: 0.9rem;">Perfil</div>
+    </a>
+
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_fichajes') }}" class="text-center {% if '/admin' in request.path %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-tools"></i></div>
+        <div style="font-size: 0.9rem;">Admin</div>
+    </a>
+    {% endif %}
+
+</nav>
+{% endblock %}

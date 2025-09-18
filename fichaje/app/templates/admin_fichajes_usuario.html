@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Fichajes de {{ usuario.nombre }}{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<!-- Título -->
+<h2 class="mb-2 text-center">Fichajes de {{ usuario.nombre }}</h2>
+
+<!-- Botón crear fichaje manual -->
+<div class="text-center mb-3">
+    <a href="{{ url_for('crear_fichaje_admin', usuario_id=usuario.id) }}" class="btn btn-outline-success">
+        ➕ Crear fichaje manual para {{ usuario.nombre }}
+    </a>
+</div>
+
+<!-- Filtros por fecha -->
+<form method="GET" class="row g-3 align-items-end justify-content-center mb-4 px-2">
+    <div class="col-auto">
+        <label class="form-label">Desde:</label>
+        <input type="date" name="desde" class="form-control" value="{{ desde_str }}">
+    </div>
+    <div class="col-auto">
+        <label class="form-label">Hasta:</label>
+        <input type="date" name="hasta" class="form-control" value="{{ hasta_str }}">
+    </div>
+    <div class="col-auto d-flex align-items-end">
+        <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+        <a href="{{ url_for('admin_fichajes_usuario', usuario_id=usuario.id) }}" class="btn btn-secondary">Limpiar</a>
+    </div>
+</form>
+
+<!-- Tabla responsive -->
+<div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark text-center">
+            <tr>
+                <th>Fecha</th>
+                <th>Registros del día</th>
+                <th>Total trabajado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in datos %}
+            <tr>
+                <td class="text-center">{{ row.fecha }}</td>
+                <td>
+                    {% for r in row.registros %}
+                        {{ r }}<br>
+                    {% endfor %}
+                </td>
+                <td class="text-center">{{ row.total or '-' }}</td>
+                <td class="text-center">
+                    <div class="d-flex flex-wrap gap-1 justify-content-center">
+                        <a href="{{ url_for('editar_fichaje_admin', fichaje_id=row.id) }}" class="btn btn-sm btn-warning">
+                            ✏️ Editar
+                        </a>
+                        <a href="{{ url_for('borrar_fichaje_admin', fichaje_id=row.id) }}"
+                           class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('¿Seguro que deseas borrar este fichaje y todos sus registros?')">
+                            🗑️ Borrar
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Botón volver -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-secondary">⬅️ Volver a usuarios</a>
+</div>
+{% endblock %}

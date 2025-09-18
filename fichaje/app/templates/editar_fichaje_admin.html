@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Editar fichaje{% endblock %}
+
+{% block content %}
+<!-- Encabezado -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-zambrana.jpg') }}" alt="Logo Zambrana" style="height: 55px;">
+</div>
+
+<h2 class="mb-4 text-center">
+    Editar fichaje de {{ fichaje.usuario.nombre }} ({{ fichaje.fecha.strftime('%d/%m/%Y') }})
+</h2>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="alert alert-info mx-2">{{ messages[0] }}</div>
+  {% endif %}
+{% endwith %}
+
+<form method="POST" class="card p-4 shadow-sm bg-light mx-2">
+    <div class="mb-3">
+        <label class="form-label">📅 Fecha:</label>
+        <input type="text" class="form-control" value="{{ fichaje.fecha.strftime('%d/%m/%Y') }}" readonly>
+    </div>
+
+    <h5>Tramos de trabajo</h5>
+
+    <!-- Línea de depuración -->
+    <p class="text-danger small">Registros visibles cargados: {{ registros_visibles|length }}</p>
+
+    <div id="tramos">
+        {% for i in range(0, registros_visibles|length, 2) %}
+        <div class="row mb-3 tramo">
+            <div class="col-12 col-md">
+                <label class="form-label">Entrada:</label>
+                <input type="time" name="entradas[]" class="form-control"
+                       value="{{ registros_visibles[i].timestamp.strftime('%H:%M') }}">
+                <input type="hidden" name="registro_ids[]" value="{{ registros_visibles[i].id }}">
+            </div>
+            <div class="col-12 col-md">
+                <label class="form-label">Salida:</label>
+                {% if i+1 < registros_visibles|length %}
+                <input type="time" name="salidas[]" class="form-control"
+                       value="{{ registros_visibles[i+1].timestamp.strftime('%H:%M') }}">
+                <input type="hidden" name="registro_ids[]" value="{{ registros_visibles[i+1].id }}">
+                {% else %}
+                <input type="time" name="salidas[]" class="form-control" value="">
+                <input type="hidden" name="registro_ids[]" value="">
+                {% endif %}
+            </div>
+            <div class="col-12 col-md-auto d-flex align-items-end mt-2">
+                <button type="button" class="btn btn-danger btn-sm eliminar-tramo w-100">
+                    🗑️ Eliminar
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" class="btn btn-secondary btn-sm mb-3 w-100" onclick="agregarTramo()">➕ Añadir tramo</button>
+    <button type="submit" class="btn btn-primary w-100">💾 Guardar cambios</button>
+</form>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_fichajes_usuario', usuario_id=fichaje.usuario.id) }}" class="btn btn-secondary">
+        ⬅️ Volver al historial
+    </a>
+</div>
+
+<script>
+function agregarTramo() {
+    const contenedor = document.getElementById('tramos');
+    const div = document.createElement('div');
+    div.classList.add('row', 'mb-3', 'tramo');
+    div.innerHTML = `
+        <div class="col-12 col-md">
+            <label class="form-label">Entrada:</label>
+            <input type="time" name="entradas[]" class="form-control">
+            <input type="hidden" name="registro_ids[]" value="">
+        </div>
+        <div class="col-12 col-md">
+            <label class="form-label">Salida:</label>
+            <input type="time" name="salidas[]" class="form-control">
+            <input type="hidden" name="registro_ids[]" value="">
+        </div>
+        <div class="col-12 col-md-auto d-flex align-items-end mt-2">
+            <button type="button" class="btn btn-danger btn-sm eliminar-tramo w-100">
+                🗑️ Eliminar
+            </button>
+        </div>
+    `;
+    contenedor.appendChild(div);
+}
+
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('eliminar-tramo')) {
+        e.target.closest('.tramo').remove();
+    }
+});
+</script>
+{% endblock %}

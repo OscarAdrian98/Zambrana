@@ -1,0 +1,14 @@
+<service>
+  <id>PythonFichaje</id>
+  <name>Python Fichaje</name>
+  <description>Servicio que ejecuta el sistema de fichaje con Flask y Waitress.</description>
+
+  <executable>""</executable>
+  <arguments>""</arguments>
+
+  <workingdirectory></workingdirectory>
+
+  <!-- ✅ Logs del servicio NSSM van ahora a la carpeta correcta -->
+  <logpath></logpath>
+  <log mode="roll" sizeThreshold="10240" keepFiles="5" pattern="yyyyMMdd" />
+</service>
