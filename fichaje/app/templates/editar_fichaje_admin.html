@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Editar fichaje{% endblock %}
+
+{% block content %}
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-demo.jpg') }}" alt="Logo demo" style="height: 55px;">
+</div>
+
+<h2 class="mb-4 text-center">
+    Editar fichaje de {{ fichaje.usuario.nombre }} ({{ fichaje.fecha.strftime('%d/%m/%Y') }})
+</h2>
+
+{% if avisos_incidencias %}
+<div class="alert alert-warning mx-2" id="avisos-incidencias">
+    <strong>Revisa las incidencias antes de guardar:</strong>
+    <ul class="mb-0 mt-2">
+        {% for aviso in avisos_incidencias %}
+            <li>{{ aviso }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<form method="POST" class="card p-3 p-md-4 shadow-sm bg-light mx-2" id="form-edicion">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="snapshot" value="{{ snapshot }}">
+
+    <div class="mb-3">
+        <label class="form-label">📅 Fecha:</label>
+        <input type="text" class="form-control" value="{{ fichaje.fecha.strftime('%d/%m/%Y') }}" readonly>
+    </div>
+
+    <h5>Tramos de trabajo</h5>
+    <p class="text-muted small">
+        Una salida vacía conserva una entrada abierta. Para borrar un tramo usa su botón Eliminar.
+    </p>
+
+    <div id="tramos">
+        {% for tramo in tramos_editables %}
+        <div class="row g-2 mb-3 p-2 border rounded tramo"
+             id="tramo-{{ tramo.clave }}"
+             data-clave="{{ tramo.clave }}"
+             data-existente="1">
+            <input type="hidden"
+                   name="tramos[{{ tramo.clave }}][entrada_id]"
+                   value="{{ tramo.entrada_id }}">
+            <input type="hidden"
+                   name="tramos[{{ tramo.clave }}][salida_id]"
+                   value="{{ tramo.salida_id or '' }}">
+            <input type="hidden"
+                   name="tramos[{{ tramo.clave }}][eliminar]"
+                   value="0"
+                   class="campo-eliminar">
+
+            <div class="col-12 col-md">
+                <label class="form-label">Entrada:</label>
+                <input type="time"
+                       name="tramos[{{ tramo.clave }}][entrada]"
+                       class="form-control"
+                       value="{{ tramo.entrada }}">
+            </div>
+            <div class="col-12 col-md">
+                <label class="form-label">
+                    Salida:
+                    {% if tramo.incompleto %}
+                        <span class="badge text-bg-warning">Abierta</span>
+                    {% endif %}
+                </label>
+                <input type="time"
+                       name="tramos[{{ tramo.clave }}][salida]"
+                       class="form-control"
+                       value="{{ tramo.salida }}">
+            </div>
+            <div class="col-12 col-md">
+                <label class="form-label">Origen del tramo:</label>
+                <select name="tramos[{{ tramo.clave }}][origen]" class="form-select">
+                    {% for origen in origenes_permitidos %}
+                        <option value="{{ origen }}" {% if origen == tramo.origen %}selected{% endif %}>
+                            {{ origen }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-auto d-flex align-items-end">
+                <button type="button" class="btn btn-outline-danger eliminar-tramo w-100">
+                    🗑️ Eliminar
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="tramos-eliminados" class="mb-2"></div>
+
+    <button type="button" class="btn btn-secondary btn-sm mb-3 w-100" id="agregar-tramo">
+        ➕ Añadir tramo
+    </button>
+
+    {% if incidencias_editables %}
+    <div class="card border-warning mb-3">
+        <div class="card-body">
+            <h6 class="card-title">Registros irregulares no emparejados</h6>
+            <p class="small text-muted">
+                Se conservarán salvo que marques explícitamente su eliminación.
+            </p>
+            {% for incidencia in incidencias_editables %}
+            <div class="form-check mb-2 incidencia-editable">
+                <input type="hidden"
+                       name="irregulares[{{ incidencia.clave }}][registro_id]"
+                       value="{{ incidencia.registro_id }}">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="irregulares[{{ incidencia.clave }}][eliminar]"
+                       value="1"
+                       id="eliminar-{{ incidencia.clave }}">
+                <label class="form-check-label" for="eliminar-{{ incidencia.clave }}">
+                    Eliminar registro irregular: {{ incidencia.mensaje }}
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary w-100">💾 Guardar cambios</button>
+</form>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_fichajes_usuario', usuario_id=fichaje.usuario.id) }}" class="btn btn-secondary">
+        ⬅️ Volver al historial
+    </a>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const contenedor = document.getElementById("tramos");
+    const eliminados = document.getElementById("tramos-eliminados");
+    const formulario = document.getElementById("form-edicion");
+    let contadorNuevos = 0;
+
+    function htmlTramoNuevo(clave) {
+        return `
+            <div class="row g-2 mb-3 p-2 border rounded tramo"
+                 id="tramo-${clave}"
+                 data-clave="${clave}"
+                 data-existente="0">
+                <input type="hidden" name="tramos[${clave}][entrada_id]" value="">
+                <input type="hidden" name="tramos[${clave}][salida_id]" value="">
+                <input type="hidden" name="tramos[${clave}][eliminar]" value="0" class="campo-eliminar">
+                <div class="col-12 col-md">
+                    <label class="form-label">Entrada:</label>
+                    <input type="time" name="tramos[${clave}][entrada]" class="form-control">
+                </div>
+                <div class="col-12 col-md">
+                    <label class="form-label">Salida:</label>
+                    <input type="time" name="tramos[${clave}][salida]" class="form-control">
+                </div>
+                <div class="col-12 col-md">
+                    <label class="form-label">Origen del tramo:</label>
+                    <select name="tramos[${clave}][origen]" class="form-select">
+                        <option value="Tienda">Tienda</option>
+                        <option value="Remoto">Remoto</option>
+                        <option value="Auto">Auto</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger eliminar-tramo w-100">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById("agregar-tramo").addEventListener("click", function () {
+        const clave = `nuevo_${Date.now()}_${contadorNuevos++}`;
+        contenedor.insertAdjacentHTML("beforeend", htmlTramoNuevo(clave));
+    });
+
+    document.addEventListener("click", function (evento) {
+        const botonEliminar = evento.target.closest(".eliminar-tramo");
+        if (botonEliminar) {
+            const fila = botonEliminar.closest(".tramo");
+            if (fila.dataset.existente === "0") {
+                fila.remove();
+                return;
+            }
+
+            fila.querySelector(".campo-eliminar").value = "1";
+            fila.classList.add("d-none");
+            eliminados.insertAdjacentHTML(
+                "beforeend",
+                `<div class="alert alert-secondary py-2 aviso-eliminado" data-clave="${fila.dataset.clave}">
+                    Tramo marcado para eliminar.
+                    <button type="button" class="btn btn-sm btn-link restaurar-tramo">Deshacer</button>
+                </div>`
+            );
+            return;
+        }
+
+        const botonRestaurar = evento.target.closest(".restaurar-tramo");
+        if (botonRestaurar) {
+            const aviso = botonRestaurar.closest(".aviso-eliminado");
+            const fila = document.getElementById(`tramo-${aviso.dataset.clave}`);
+            fila.querySelector(".campo-eliminar").value = "0";
+            fila.classList.remove("d-none");
+            aviso.remove();
+        }
+    });
+
+    formulario.addEventListener("submit", function (evento) {
+        const tramosActivos = Array.from(document.querySelectorAll(".tramo")).filter(
+            fila => fila.querySelector(".campo-eliminar").value === "0"
+                && fila.querySelector('input[name$="[entrada]"]').value
+        );
+        if (tramosActivos.length === 0) {
+            const confirmado = window.confirm(
+                "No quedará ningún tramo editable activo. ¿Deseas continuar?"
+            );
+            if (!confirmado) {
+                evento.preventDefault();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

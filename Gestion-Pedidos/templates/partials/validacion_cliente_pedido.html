@@ -1,0 +1,148 @@
+{% if error_msg %}
+<div class="alert alert-warning m-2 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ error_msg }}</span>
+</div>
+{% elif pedido %}
+{% set panel_ns = namespace(has_critical=false, has_minor=false) %}
+{% for c in candidatos %}
+    {% if c.discrepancias_criticas %}{% set panel_ns.has_critical = true %}{% endif %}
+    {% if c.discrepancias_menores %}{% set panel_ns.has_minor = true %}{% endif %}
+{% endfor %}
+<div class="stock-check-card m-2 validation-panel-card">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 validation-panel-header">
+        <div>
+            <div class="fw-700 stock-check-title">
+                Validación cliente pedido PS #{{ pedido.id_pedido }}{% if pedido.referencia %} · Ref. {{ pedido.referencia }}{% endif %}
+            </div>
+            <div class="stock-check-meta">
+                Estado: {{ pedido.estado_nombre or '-' }} · Pago: {{ pedido.modo_pago or '-' }} ·
+                Candidatos Ambar: {{ candidatos|length }}
+            </div>
+        </div>
+        {% if panel_ns.has_critical %}
+        <span class="badge stock-result-badge bg-danger">Datos no coinciden</span>
+        {% elif panel_ns.has_minor %}
+        <span class="badge stock-result-badge bg-warning text-dark">Revisar datos</span>
+        {% else %}
+        <span class="badge stock-result-badge bg-success">Datos cliente OK</span>
+        {% endif %}
+    </div>
+
+    {% if panel_ns.has_critical %}
+    <div class="alert alert-warning py-2 px-3 mb-3 stock-check-alert">
+        Hay diferencias importantes entre PrestaShop y Ambar. Revisar antes de crear pedido.
+    </div>
+    {% elif panel_ns.has_minor %}
+    <div class="alert alert-warning py-2 px-3 mb-3 stock-check-alert">
+        Hay pequeñas diferencias en los datos del cliente. Conviene revisar.
+    </div>
+    {% else %}
+    <div class="alert alert-success py-2 px-3 mb-3 stock-check-alert">
+        Los datos principales del cliente coinciden correctamente.
+    </div>
+    {% endif %}
+
+    {% for c in candidatos %}
+    <div class="validation-candidate-block {% if not loop.last %}mb-3{% endif %}">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="fw-600">Cliente Ambar #{{ c.numero_cliente }} - {{ c.nombre }}</span>
+            {% if c.discrepancias_criticas %}
+            <span class="badge bg-danger">Datos no coinciden</span>
+            {% elif c.discrepancias_menores %}
+            <span class="badge bg-warning text-dark">Revisar datos</span>
+            {% else %}
+            <span class="badge bg-success">Datos cliente OK</span>
+            {% endif %}
+            <span class="text-muted text-secondary-line">Match: {{ c.match_reason | join(', ') if c.match_reason else '-' }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm stock-check-table validation-check-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Campo</th>
+                        <th>PrestaShop</th>
+                        <th>Ambar</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="validation-check-body">
+                    {% set diffs = c.discrepancias_detalle %}
+                    {% if diffs %}
+                        {% for diff in diffs %}
+                        <tr class="validation-check-row">
+                            <td>{{ diff.campo }}</td>
+                            <td class="validation-wrap">{{ diff.prestashop }}</td>
+                            <td class="validation-wrap">{{ diff.ambar }}</td>
+                            <td>
+                                {% if diff.critica %}
+                                <span class="badge bg-danger">Distinto</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Distinto</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr class="validation-check-row">
+                        <td>NIF</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.dni or '-' }}</td>
+                        <td class="validation-wrap">{{ c.nif or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Nombre</td>
+                        <td class="validation-wrap">{{ pedido.nombre_cliente }} {{ pedido.apellidos_cliente }}</td>
+                        <td class="validation-wrap">{{ c.nombre or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Dirección</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.linea1 }} {{ pedido.direccion_factura.linea2 }}</td>
+                        <td class="validation-wrap">{{ c.direccion or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>CP</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.postal or '-' }}</td>
+                        <td class="validation-wrap">{{ c.postal or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Población</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.ciudad or '-' }}</td>
+                        <td class="validation-wrap">{{ c.ciudad or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Provincia</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.provincia or '-' }}</td>
+                        <td class="validation-wrap">{{ c.provincia or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>País</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.pais or '-' }}</td>
+                        <td class="validation-wrap">{{ c.pais or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Teléfono</td>
+                        <td class="validation-wrap">{{ pedido.direccion_factura.telefono or pedido.direccion_factura.movil or '-' }}</td>
+                        <td class="validation-wrap">{{ c.telefono or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    <tr class="validation-check-row">
+                        <td>Email</td>
+                        <td class="validation-wrap">{{ pedido.email_cliente or '-' }}</td>
+                        <td class="validation-wrap">{{ c.email or '-' }}</td>
+                        <td><span class="badge bg-success">OK</span></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

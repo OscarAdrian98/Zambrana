@@ -1,0 +1,5 @@
+# Dependencias directas de desarrollo y pruebas.
+-r requirements.txt
+
+PyPDF2==3.0.1
+pytest==9.0.3

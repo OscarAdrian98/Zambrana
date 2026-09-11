@@ -1,0 +1,82 @@
+{% if error_msg %}
+<div class="alert alert-warning m-2 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ error_msg }}</span>
+</div>
+{% elif stock_check %}
+{% set pedido = stock_check.pedido %}
+<div class="stock-check-card m-2">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <div>
+            <div class="fw-700 stock-check-title">
+                Pedido PS #{{ pedido.id_order }}{% if pedido.reference %} · Ref. {{ pedido.reference }}{% endif %}
+            </div>
+            <div class="stock-check-meta">
+                Estado: {{ pedido.state_name or '-' }} · Pago: {{ pedido.payment or '-' }} ·
+                {% if stock_check.pagado %}
+                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Pagado</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">No pagado</span>
+                {% endif %}
+            </div>
+        </div>
+        {% if stock_check.ok_global %}
+        <span class="badge stock-result-badge bg-success">OK para facturar</span>
+        {% else %}
+        <span class="badge stock-result-badge bg-warning text-dark">Revisar</span>
+        {% endif %}
+    </div>
+
+    {% if stock_check.ok_global %}
+    <div class="alert alert-success py-2 px-3 mb-2 stock-check-alert">
+        {{ stock_check.mensajes_globales[0] }}
+    </div>
+    {% else %}
+    <div class="alert alert-warning py-2 px-3 mb-2 stock-check-alert">
+        {% for msg in stock_check.mensajes_globales %}
+        <div>{{ msg }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-sm stock-check-table mb-0">
+            <thead>
+                <tr>
+                    <th>ID detalle</th>
+                    <th>Referencia PS</th>
+                    <th>Producto</th>
+                    <th class="text-center">Cantidad</th>
+                    <th>Artículo Ambar</th>
+                    <th class="text-center">Stock Ambar</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody class="stock-check-body">
+                {% for lin in stock_check.lineas %}
+                <tr class="stock-check-row">
+                    <td>{{ lin.id_order_detail }}</td>
+                    <td>{{ lin.referencia_ps or '-' }}</td>
+                    <td>{{ lin.nombre_producto or '-' }}</td>
+                    <td class="text-center">{{ lin.cantidad_pedida }}</td>
+                    <td>{{ lin.articulo_ambar }}</td>
+                    <td class="text-center">{{ '%.2f'|format(lin.stock_ambar_total) }}</td>
+                    <td>
+                        {% if lin.ok %}
+                        <span class="badge bg-success">OK</span>
+                        {% elif lin.estado_linea == 'Sin stock' %}
+                        <span class="badge bg-danger">Sin stock</span>
+                        {% elif 'Referencia no encontrada' in lin.estado_linea %}
+                        <span class="badge bg-danger">Referencia no encontrada</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">{{ lin.estado_linea }}</span>
+                        {% endif %}
+                        <div class="stock-check-line-msg mt-1">{{ lin.mensaje_linea }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}

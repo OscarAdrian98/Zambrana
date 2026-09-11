@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}Vacaciones{% endblock %}
+
+{% block content %}
+
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-demo.jpg') }}" alt="Logo demo" style="height: 55px;">
+</div>
+
+<!-- Título + botón -->
+<div class="d-flex justify-content-between align-items-center mt-3 px-3">
+    <h4 class="fw-bold mb-0">Vacaciones y ausencias</h4>
+    <button id="btnMostrarFormulario" class="btn btn-danger rounded-circle">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+</div>
+
+<!-- Resumen saldo -->
+<div class="card shadow-sm mx-auto my-3" style="max-width: 400px;">
+    <div class="card-body d-flex justify-content-around text-center">
+
+        <div>
+            <div class="fw-bold fs-5 text-danger">{{ saldo_disponible }}</div>
+            <div class="text-muted small">Disponibles</div>
+        </div>
+
+        <div>
+            <div class="fw-bold fs-5 text-warning">{{ saldo_solicitado }}</div>
+            <div class="text-muted small">Solicitados</div>
+        </div>
+
+        <div>
+            <div class="fw-bold fs-5 text-success">{{ saldo_utilizado }}</div>
+            <div class="text-muted small">Utilizados</div>
+        </div>
+
+    </div>
+</div>
+
+<!-- FORMULARIO -->
+<div id="formularioAusencia" class="card p-4 shadow-sm mb-4 mx-auto {% if not editar_tramo %}d-none{% endif %}"
+    style="max-width:900px;">
+
+    <form method="POST" class="row g-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        {% if editar_tramo %}
+        <input type="hidden" name="editar_snapshot" value="{{ editar_tramo.snapshot }}">
+        {% endif %}
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Desde:</label>
+            <input type="date" name="fecha_desde" class="form-control" required
+                value="{{ editar_tramo.fecha_inicio if editar_tramo }}">
+        </div>
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Hasta:</label>
+            <input type="date" name="fecha_hasta" class="form-control" required
+                value="{{ editar_tramo.fecha_fin if editar_tramo }}">
+        </div>
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Tipo:</label>
+
+            <select name="tipo" id="tipoAusencia" class="form-select" required>
+
+                <option value="">Selecciona...</option>
+
+                <option value="Vacaciones" {% if editar_tramo and editar_tramo.tipo=='Vacaciones' %}selected{% endif %}>
+                    Vacaciones
+                </option>
+
+                <option value="Enfermedad" {% if editar_tramo and editar_tramo.tipo=='Enfermedad' %}selected{% endif %}>
+                    Enfermedad
+                </option>
+
+                <option value="Asuntos propios" {% if editar_tramo and editar_tramo.tipo=='Asuntos propios' %}selected{%
+                    endif %}>
+                    Asuntos propios
+                </option>
+
+                <option value="Baja" {% if editar_tramo and editar_tramo.tipo=='Baja' %}selected{% endif %}>
+                    Baja
+                </option>
+
+                <option value="Medico" {% if editar_tramo and editar_tramo.tipo=='Medico' %}selected{% endif %}>
+                    Médico
+                </option>
+
+            </select>
+
+        </div>
+
+        <!-- HORAS SOLO PARA MEDICO -->
+
+        <div id="bloqueHoras" class="row g-3" style="display:none;">
+
+            <div class="col-12 col-md-6">
+                <label class="form-label">Hora desde</label>
+                <input type="time" name="hora_desde" class="form-control"
+                    value="{{ editar_tramo.hora_desde if editar_tramo }}">
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label">Hora hasta</label>
+                <input type="time" name="hora_hasta" class="form-control"
+                    value="{{ editar_tramo.hora_hasta if editar_tramo }}">
+            </div>
+
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">Observaciones:</label>
+
+            <input type="text" name="observaciones" class="form-control" maxlength="255"
+                value="{{ editar_tramo.observaciones if editar_tramo }}">
+        </div>
+
+        <div class="col-12 d-grid">
+
+            <button type="submit" class="btn btn-primary mt-3">
+
+                {% if editar_tramo %}
+                💾 Guardar cambios
+                {% else %}
+                ➕ Añadir ausencia
+                {% endif %}
+
+            </button>
+
+        </div>
+
+    </form>
+</div>
+
+<!-- FILTROS -->
+<div class="card p-3 shadow-sm mb-4 mx-auto" style="max-width:900px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <h5 class="fw-semibold mb-0">Historial de ausencias</h5>
+
+        <a href="{{ url_for('mis_ausencias') }}" class="btn btn-sm btn-outline-secondary">
+            Limpiar filtros
+        </a>
+
+    </div>
+
+    <form method="GET" class="row g-3 align-items-end">
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Desde</label>
+            <input type="date" name="desde" class="form-control" value="{{ filtro_desde }}">
+        </div>
+
+        <div class="col-12 col-md-4">
+            <label class="form-label">Hasta</label>
+            <input type="date" name="hasta" class="form-control" value="{{ filtro_hasta }}">
+        </div>
+
+        <div class="col-12 col-md-3">
+            <label class="form-label">Tipo</label>
+
+            <select name="tipo" class="form-select">
+
+                <option value="">Todos</option>
+
+                <option value="Vacaciones" {% if filtro_tipo=='Vacaciones' %}selected{% endif %}>
+                    Vacaciones
+                </option>
+
+                <option value="Enfermedad" {% if filtro_tipo=='Enfermedad' %}selected{% endif %}>
+                    Enfermedad
+                </option>
+
+                <option value="Asuntos propios" {% if filtro_tipo=='Asuntos propios' %}selected{% endif %}>
+                    Asuntos propios
+                </option>
+
+                <option value="Baja" {% if filtro_tipo=='Baja' %}selected{% endif %}>
+                    Baja
+                </option>
+
+                <option value="Medico" {% if filtro_tipo=='Medico' %}selected{% endif %}>
+                    Médico
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="col-12 col-md-1 d-grid">
+            <button type="submit" class="btn btn-dark">Filtrar</button>
+        </div>
+
+    </form>
+</div>
+
+<!-- LISTADO -->
+<div class="mx-auto" style="max-width:900px;">
+
+    <h5 class="fw-semibold mb-3 px-2">Mis solicitudes</h5>
+
+    {% if ausencias_actuales %}
+
+    {% for a in ausencias_actuales %}
+
+    <div class="card shadow-sm mb-3">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-1">
+
+                <span class="fw-bold">{{ a.tipo }}</span>
+
+                <span class="badge
+{% if a.estado == 'pendiente' %}bg-warning text-dark
+{% elif a.estado == 'utilizadas' %}bg-success
+{% else %}bg-secondary
+{% endif %}">
+                    {{ a.estado }}
+                </span>
+
+            </div>
+
+            <div class="text-muted small">
+                {{ a.fecha_texto }}
+
+                {% if a.fecha != a.fecha_hasta %}
+                - {{ a.fecha_hasta_texto }}
+                ({{ a.dias }} día{{ 's' if a.dias > 1 else '' }})
+                {% endif %}
+
+            </div>
+
+            {% if a.hora_desde %}
+            <div class="text-muted small mt-1">
+                🕒 {{ a.hora_desde.strftime('%H:%M') }} - {{ a.hora_hasta.strftime('%H:%M') }}
+            </div>
+            {% endif %}
+
+            {% if a.observaciones %}
+            <div class="mt-1 text-muted">
+                {{ a.observaciones }}
+            </div>
+            {% endif %}
+
+            {% if a.fecha >= current_date and not a.creado_por_admin %}
+            <div class="mt-3 d-flex justify-content-end gap-2">
+
+                <form method="POST" action="{{ url_for('editar_ausencia_usuario') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="snapshot" value="{{ a.snapshot }}">
+
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ url_for('eliminar_ausencia_usuario') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="snapshot" value="{{ a.snapshot }}">
+                    <button class="btn btn-sm btn-outline-danger"
+                        onclick="return confirm('¿Seguro que quieres eliminar esta ausencia?')">
+                        <i class="bi bi-trash"></i> Eliminar
+                    </button>
+
+                </form>
+
+            </div>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+    {% else %}
+
+    <div class="card shadow-sm">
+        <div class="card-body text-center text-muted">
+            No hay ausencias registradas con los filtros seleccionados.
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>
+
+<div style="height:90px;"></div>
+
+<!-- SCRIPT -->
+<script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const boton = document.getElementById("btnMostrarFormulario");
+        const formulario = document.getElementById("formularioAusencia");
+
+        boton.addEventListener("click", function () {
+
+            formulario.classList.toggle("d-none");
+
+            boton.classList.toggle("btn-danger");
+            boton.classList.toggle("btn-secondary");
+
+        });
+
+    });
+
+    const tipoAusencia = document.getElementById("tipoAusencia");
+    const bloqueHoras = document.getElementById("bloqueHoras");
+
+    function controlarHoras() {
+
+        if (!tipoAusencia) return;
+
+        if (tipoAusencia.value === "Medico") {
+            bloqueHoras.style.display = "flex";
+        }
+        else {
+            bloqueHoras.style.display = "none";
+        }
+
+    }
+
+    if (tipoAusencia) {
+        tipoAusencia.addEventListener("change", controlarHoras);
+        controlarHoras();
+    }
+
+</script>
+
+<!-- Navegación inferior -->
+<nav class="navbar fixed-bottom bg-white border-top d-flex justify-content-around py-2">
+
+    <a href="{{ url_for('fichar') }}"
+        class="text-center {% if request.path == '/fichar' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-house-door-fill"></i></div>
+        <div style="font-size:0.9rem;">Inicio</div>
+    </a>
+
+    <a href="{{ url_for('control_horario') }}"
+        class="text-center {% if request.path == '/control-horario' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-clock-history"></i></div>
+        <div style="font-size:0.9rem;">Horarios</div>
+    </a>
+
+    <a href="{{ url_for('resumen') }}"
+        class="text-center {% if request.path == '/resumen' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar3"></i></div>
+        <div style="font-size:0.9rem;">Calendario</div>
+    </a>
+
+    <a href="{{ url_for('mis_ausencias') }}"
+        class="text-center {% if request.path == '/mis-ausencias' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar-check"></i></div>
+        <div style="font-size:0.9rem;">Vacaciones</div>
+    </a>
+
+    <a href="{{ url_for('perfil') }}"
+        class="text-center {% if request.path == '/perfil' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-person-circle"></i></div>
+        <div style="font-size:0.9rem;">Perfil</div>
+    </a>
+
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_fichajes') }}"
+        class="text-center {% if '/admin' in request.path %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-tools"></i></div>
+        <div style="font-size:0.9rem;">Admin</div>
+    </a>
+    {% endif %}
+
+</nav>
+
+{% endblock %}

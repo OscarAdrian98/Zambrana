@@ -1,0 +1,449 @@
+{% if error_msg %}
+<div class="alert alert-danger m-3 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-x-octagon-fill"></i>
+    <span>{{ error_msg }}</span>
+</div>
+{% endif %}
+
+{% if matching_error %}
+<div class="alert alert-warning m-3 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ matching_error }}</span>
+</div>
+{% endif %}
+
+{% if anticipos_error %}
+<div class="alert alert-warning m-3 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ anticipos_error }}</span>
+</div>
+{% endif %}
+
+{% if pedidos_ambar_error %}
+<div class="alert alert-warning m-3 d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>{{ pedidos_ambar_error }}</span>
+</div>
+{% endif %}
+
+{% if not pedidos %}
+<div class="alert alert-info m-3 d-flex align-items-center gap-2">
+    <i class="bi bi-info-circle-fill"></i>
+    No se encontraron pedidos con los filtros seleccionados.
+</div>
+{% else %}
+<div class="table-responsive">
+<table class="table table-pedidos table-hover align-middle mb-0">
+    <thead>
+        <tr>
+            <th class="text-center" style="width:4%">#</th>
+            <th class="text-center" style="width:7%">ID Pedido</th>
+            <th class="text-start" style="width:8%">Referencia</th>
+            <th class="text-start" style="width:9%">Fecha</th>
+            <th class="text-start" style="width:11%">Estado PS / Interno</th>
+            <th class="text-start" style="width:9%">Pago</th>
+            <th class="text-start" style="width:12%">Cliente</th>
+            <th class="text-start" style="width:10%">Direccion</th>
+            <th class="text-start" style="width:14%">Matching Ambar</th>
+            <th class="text-start" style="width:14%">Anticipos Ambar</th>
+            <th class="text-start" style="width:14%">Pedido Ambar</th>
+            <th class="text-end" style="width:8%">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in pedidos %}
+    {% set dir = p.direccion_factura if usar_dir == 'Factura' else p.direccion_envio %}
+    {% set candidatos = matches_por_pedido.get(p.id_pedido, []) %}
+    {% set can_create = puede_crear_por_pedido.get(p.id_pedido, False) %}
+    {% set bloqueo = bloqueo_por_pedido.get(p.id_pedido, '') %}
+    {% set ant_ctx = anticipos_por_pedido.get(p.id_pedido, {}) %}
+    {% set ant_top = ant_ctx.get('anticipo_mas_reciente') %}
+    {% set ant_can = ant_ctx.get('puede_registrar', False) %}
+    {% set ant_show_action = ant_ctx.get('puede_mostrar_accion', ant_can) %}
+    {% set ant_bloqueo = ant_ctx.get('motivo_bloqueo', '') %}
+    {% set ant_eq = ant_ctx.get('equivalente') %}
+    {% set ant_req_manual = ant_ctx.get('requiere_seleccion_manual', False) %}
+    {% set ant_eq_por_cliente = ant_ctx.get('equivalentes_por_cliente', {}) %}
+    {% set ant_top_por_cliente = ant_ctx.get('anticipo_mas_reciente_por_cliente', {}) %}
+    {% set ped_ctx = pedidos_ambar_por_pedido.get(p.id_pedido, {}) %}
+    {% set ped_top = ped_ctx.get('pedido_mas_reciente') %}
+    {% set ped_can = ped_ctx.get('puede_crear', False) %}
+    {% set ped_show_action = ped_ctx.get('puede_mostrar_accion', ped_can) %}
+    {% set ped_bloqueo = ped_ctx.get('motivo_bloqueo', '') %}
+    {% set ped_exacto = ped_ctx.get('pedido_existente_exacto') %}
+    {% set ped_prob = ped_ctx.get('pedido_probable') %}
+    {% set ped_req_manual = ped_ctx.get('requiere_seleccion_manual', False) %}
+    {% set is_prod = env_context.get('is_any_production', False) %}
+    {% set read_only = env_context.get('read_only', False) %}
+    {% set val_ns = namespace(has_critical=false, has_minor=false) %}
+    {% for c in candidatos %}
+        {% if c.discrepancias_criticas %}{% set val_ns.has_critical = true %}{% endif %}
+        {% if c.discrepancias_menores %}{% set val_ns.has_minor = true %}{% endif %}
+    {% endfor %}
+    <tr id="pedido-{{ p.id_pedido }}" data-pedido-id="{{ p.id_pedido }}">
+        <td class="text-center text-muted small">{{ loop.index }}</td>
+        <td class="text-center fw-600 align-middle">{{ p.id_pedido }}</td>
+        <td class="small cell-main">{{ p.referencia or '-' }}</td>
+        <td class="small cell-compact">
+            <div>{{ p.fecha_pedido.strftime('%d/%m/%Y') if p.fecha_pedido else '-' }}</div>
+            <div class="text-muted text-secondary-line">{{ p.fecha_pedido.strftime('%H:%M:%S') if p.fecha_pedido else '' }}</div>
+        </td>
+        <td class="small cell-compact state-cell">
+            <div class="internal-state-box" style="--internal-state-color: {{ p.internal_state_color }};">
+                <div class="internal-state-head">
+                    <span class="badge-internal-state">INTERNO</span>
+                    <span class="internal-state-label">{{ p.internal_state_name }}</span>
+                </div>
+                {% if estados_internos %}
+                <select class="form-select form-select-sm internal-state-select"
+                        data-role="internal-state-select"
+                        data-idpedido="{{ p.id_pedido }}"
+                        {% if read_only %}disabled{% endif %}>
+                    {% for st in estados_internos %}
+                    <option value="{{ st.id_internal_state }}" {% if p.internal_state_id == st.id_internal_state %}selected{% endif %}>{{ st.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            <div class="ps-state-box">
+                <span class="badge-ps-state">PS</span>
+                <span class="badge-estado me-1" style="background-color:{{ p.color_estado }};" title="{{ p.estado_nombre }}"></span>
+                <span class="cell-main">{{ p.estado_nombre }}</span>
+            </div>
+            {% if estados_pedido %}
+            <div class="estado-action-row mt-1">
+                <select class="form-select form-select-sm estado-select" data-role="estado-select" data-idpedido="{{ p.id_pedido }}">
+                    {% for st in estados_pedido %}
+                    <option value="{{ st.id_order_state }}" {% if p.estado_id == st.id_order_state %}selected{% endif %}>{{ st.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% if not read_only %}
+                <button type="button"
+                        class="btn btn-outline-info btn-sm btn-action-compact"
+                        data-action="cambiar-estado-ps"
+                        data-idpedido="{{ p.id_pedido }}"
+                        data-role="estado-apply-btn">
+                    Aplicar
+                </button>
+                {% else %}
+                <span class="readonly-note">Solo lectura</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </td>
+        <td class="small cell-compact cell-main">{{ p.modo_pago }}</td>
+        <td class="small cell-compact">
+            <div class="mb-1">
+                <button type="button"
+                        class="btn btn-outline-info btn-sm btn-action-compact"
+                        data-action="toggle-stock-panel"
+                        data-idpedido="{{ p.id_pedido }}">
+                    Ver stock
+                </button>
+            </div>
+            <div class="mb-1">
+                <button type="button"
+                        class="btn btn-sm btn-action-compact btn-email-pedido"
+                        data-action="abrir-modal-email-pedido"
+                        data-idpedido="{{ p.id_pedido }}"
+                        data-email="{{ p.email_cliente }}"
+                        data-cliente="{{ (p.nombre_cliente ~ ' ' ~ p.apellidos_cliente)|trim }}"
+                        data-referencia="{{ p.referencia or '' }}"
+                        title="Enviar email al cliente">
+                    <i class="bi bi-envelope"></i> Email
+                </button>
+            </div>
+            <div class="cliente-web-cell" style="max-width:220px">
+                <div class="cliente-web-name-line fw-600 cell-main">
+                    <span class="cliente-web-name text-truncate" title="{{ p.nombre_cliente }} {{ p.apellidos_cliente }}">
+                        {{ p.nombre_cliente }} {{ p.apellidos_cliente }}
+                    </span>
+                    {% if p.es_pro %}<sup class="label-pro">PRO</sup>{% endif %}
+                </div>
+            </div>
+            <div class="text-muted text-secondary-line text-truncate" style="max-width:220px">{{ p.email_cliente }}</div>
+        </td>
+        <td class="small cell-compact">
+            <div class="text-truncate" style="max-width:280px" title="{{ dir.linea1 }} {{ dir.linea2 }}">
+                {{ dir.linea1 }} {{ dir.linea2 }}
+            </div>
+            <div class="text-muted text-secondary-line">{{ dir.postal }} {{ dir.ciudad }} ({{ dir.provincia }})</div>
+            {% if dir.pais %}
+            <div>
+                <strong>País:</strong> {{ dir.pais }}
+            </div>
+            {% endif %}
+        </td>
+        <td class="small cell-ambar">
+            {% if matching_error %}
+            <span class="text-warning">Error de conexion con Ambar</span>
+            {% elif not candidatos %}
+            <span class="text-muted">Sin coincidencias</span>
+            {% else %}
+            {% for c in candidatos %}
+            <div class="ambar-match-row {% if not loop.last %}mb-1{% endif %}">
+                <div class="match-head text-truncate" title="{{ c.nombre }}">
+                    <span class="match-id-row">
+                        <span class="match-id">#{{ c.numero_cliente }}</span>
+                        {% if c.numero_cliente %}
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm btn-copy-id"
+                                data-action="copiar-cliente-ambar"
+                                data-cliente="{{ c.numero_cliente }}"
+                                title="Copiar cliente Ambar">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        {% endif %}
+                    </span>
+                    <span class="match-name">{{ c.nombre }}</span>
+                </div>
+                {% if c.match_reason %}
+                <div class="text-muted text-secondary-line">Match: {{ c.match_reason | join(', ') }}</div>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-1 mt-1 match-flags">
+                    {% if c.baja %}
+                    <button type="button"
+                            class="btn btn-danger btn-sm btn-reactivar-cliente"
+                            data-action="activar-cliente"
+                            data-idcliente="{{ c.numero_cliente }}"
+                            data-idpedido="{{ p.id_pedido }}">
+                        Baja · Activar
+                    </button>
+                    {% endif %}
+                    {% if c.bloqueo %}<span class="badge badge-mini bg-warning text-dark">Bloqueado</span>{% endif %}
+                    {% if c.aviso %}<span class="badge badge-mini bg-info text-dark">Aviso</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            <div class="mt-1 d-flex flex-wrap align-items-center gap-2">
+                {% if val_ns.has_critical %}
+                <span class="badge bg-danger">Datos no coinciden</span>
+                {% elif val_ns.has_minor %}
+                <span class="badge bg-warning text-dark">Revisar datos</span>
+                {% else %}
+                <span class="badge bg-success">Datos cliente OK</span>
+                {% endif %}
+                <button type="button"
+                        class="btn btn-sm btn-action-compact btn-validacion-toggle"
+                        data-action="toggle-validacion-cliente-panel"
+                        data-idpedido="{{ p.id_pedido }}">
+                    Ver diferencias
+                </button>
+            </div>
+            {% if candidatos|length > 1 %}
+            <div class="match-selector manual-client-select mt-1">
+                <div class="text-muted text-secondary-line mb-1">Seleccion manual cliente Ambar:</div>
+                {% for c in candidatos %}
+                <label class="manual-cli-option manual-client-option {% if c.baja %}is-disabled{% endif %}">
+                    <input type="radio"
+                           name="cliente_ambar_manual_{{ p.id_pedido }}"
+                           value="{{ c.numero_cliente }}"
+                           {% if c.baja %}disabled{% endif %}>
+                    <span class="manual-client-text">
+                        <span class="manual-client-id">#{{ c.numero_cliente }}</span>
+                        <span class="manual-client-name">{{ c.nombre }}</span>
+                        {% if c.discrepancias_criticas %}
+                        <span class="badge bg-danger">Revisar datos</span>
+                        {% elif c.discrepancias_menores %}
+                        <span class="badge bg-warning text-dark">Revisar datos</span>
+                        {% endif %}
+                        {% if c.nif %}<span class="manual-client-nif">{{ c.nif }}</span>{% endif %}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endif %}
+            <div class="d-flex flex-wrap gap-1 mt-1 action-row-compact">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm btn-action-compact btn-preview-cliente"
+                        data-action="previsualizar-cliente"
+                        data-idpedido="{{ p.id_pedido }}"
+                        data-usardireccion="{{ usar_dir }}">
+                    Previsualizar cliente
+                </button>
+                {% if can_create %}
+                {% if not read_only %}
+                <button type="button"
+                        class="btn btn-success btn-sm btn-action-compact btn-write-action"
+                        data-action="crear-cliente-real"
+                        data-idpedido="{{ p.id_pedido }}"
+                        data-usardireccion="{{ usar_dir }}">
+                    Crear cliente{% if is_prod %} [ESCRITURA]{% endif %}
+                </button>
+                {% endif %}
+                {% endif %}
+            </div>
+            {% if can_create and read_only %}
+            <div class="text-warning aviso-negocio small mt-1">Alta de cliente bloqueada: modo solo lectura.</div>
+            {% endif %}
+            {% if not can_create and bloqueo %}
+            <div class="text-warning aviso-negocio small mt-1">{{ bloqueo }}</div>
+            {% endif %}
+        </td>
+
+        <td class="small cell-ambar">
+            {% if anticipos_error %}
+            <span class="text-warning">Error al cargar anticipos</span>
+            {% elif not ant_ctx.get('clientes_lectura_ids') %}
+            <span class="text-muted">{{ ant_bloqueo or 'No hay cliente Ambar valido' }}</span>
+            {% else %}
+                {% if ant_req_manual %}
+                    {% if ant_top %}
+                    <div class="ambar-match-row">
+                        <div class="fw-600">Último anticipo entre candidatos: #{{ ant_top.codigo }} · {{ '%.2f'|format(ant_top.importe_entregado) }} EUR</div>
+                        <div class="text-muted text-secondary-line">{{ ant_top.fecha }} · {{ ant_top.forma_pago }} · Bco {{ ant_top.banco }}</div>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">Sin anticipos previos en candidatos</span>
+                    {% endif %}
+
+                    <script type="application/json" id="anticipo-manual-data-{{ p.id_pedido }}">
+                        {{ {
+                            "equivalentes_por_cliente": ant_eq_por_cliente,
+                            "recientes_por_cliente": ant_top_por_cliente,
+                            "puede_mostrar_accion": ant_show_action,
+                            "read_only": read_only,
+                            "is_prod": is_prod,
+                        } | tojson }}
+                    </script>
+
+                    <div id="anticipo-selected-state-{{ p.id_pedido }}" class="text-warning aviso-negocio small mt-1">
+                        Selecciona primero el cliente Ambar correcto.
+                    </div>
+
+                    {% if ant_show_action and not read_only %}
+                    <div id="anticipo-action-wrap-{{ p.id_pedido }}" class="d-none flex-wrap gap-1 mt-1 action-row-compact">
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm btn-action-compact btn-write-action"
+                                data-action="registrar-anticipo-real"
+                                data-idpedido="{{ p.id_pedido }}"
+                                data-usardireccion="{{ usar_dir }}"
+                                data-requiere-cliente-manual="1">
+                            Registrar anticipo{% if is_prod %} [ESCRITURA]{% endif %}
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% if ant_show_action and read_only %}
+                    <div class="text-warning aviso-negocio small mt-1">Alta de anticipo bloqueada: modo solo lectura.</div>
+                    {% endif %}
+                {% else %}
+                    {% if ant_top %}
+                    <div class="ambar-match-row">
+                        <div class="fw-600">#{{ ant_top.codigo }} · {{ '%.2f'|format(ant_top.importe_entregado) }} EUR</div>
+                        <div class="text-muted text-secondary-line">{{ ant_top.fecha }} · {{ ant_top.forma_pago }} · Bco {{ ant_top.banco }}</div>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">Sin anticipos previos</span>
+                    {% endif %}
+
+                    {% if ant_eq %}
+                    <div class="text-warning aviso-negocio small mt-1">
+                        Ya existe anticipo equivalente #{{ ant_eq.codigo }} - {{ '%.2f'|format(ant_eq.importe_entregado) }} EUR - {{ ant_eq.fecha }}
+                    </div>
+                    {% endif %}
+
+                    {% if ant_show_action and not read_only %}
+                    <div class="d-flex flex-wrap gap-1 mt-1 action-row-compact">
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm btn-action-compact btn-write-action"
+                                data-action="registrar-anticipo-real"
+                                data-idpedido="{{ p.id_pedido }}"
+                                data-usardireccion="{{ usar_dir }}"
+                                data-requiere-cliente-manual="0">
+                            Registrar anticipo{% if is_prod %} [ESCRITURA]{% endif %}
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% if not ant_show_action and ant_bloqueo %}
+                    <div class="text-warning aviso-negocio small mt-1">Alta de anticipo: {{ ant_bloqueo }}</div>
+                    {% endif %}
+                    {% if ant_show_action and read_only %}
+                    <div class="text-warning aviso-negocio small mt-1">Alta de anticipo bloqueada: modo solo lectura.</div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <td class="small cell-ambar">
+            {% if pedidos_ambar_error %}
+            <span class="text-warning">Error al cargar pedido Ambar</span>
+            {% elif not ped_ctx.get('clientes_lectura_ids') %}
+            <span class="text-muted">{{ ped_bloqueo or 'No hay cliente Ambar valido' }}</span>
+            {% else %}
+                {% set ped_show = ped_exacto or ped_top %}
+                {% if ped_show %}
+                    <div class="ambar-match-row">
+                        <div class="fw-600">
+                            {% if ped_exacto %}Pedido exacto ya creado: {% endif %}{{ ped_show.referencia }} · {{ '%.2f'|format(ped_show.importe_total) }} EUR
+                        </div>
+                        <div class="text-muted text-secondary-line">{{ ped_show.fecha }} · {{ ped_show.forma_pago or '-' }}</div>
+                    </div>
+                {% else %}
+                    <span class="text-muted">Sin pedidos previos</span>
+                {% endif %}
+
+                {% if ped_exacto %}
+                <div class="text-warning aviso-negocio small mt-1">
+                    Ya existe pedido exacto: {{ ped_exacto.referencia }}
+                </div>
+                {% elif ped_prob %}
+                <div class="text-warning aviso-negocio small mt-1">
+                    Pedido probable: {{ ped_prob.referencia }} (fecha/importe similar)
+                </div>
+                {% endif %}
+                {% if ant_eq %}
+                <div class="text-muted small mt-1">
+                    Contexto anticipo: equivalente {{ ant_eq.codigo }}
+                </div>
+                {% endif %}
+
+                {% if ped_show_action and not read_only %}
+                <div class="d-flex flex-wrap gap-1 mt-1 action-row-compact">
+                    <button type="button"
+                            class="btn btn-outline-success btn-sm btn-action-compact btn-write-action"
+                            data-action="crear-pedido-real"
+                            data-idpedido="{{ p.id_pedido }}"
+                            data-usardireccion="{{ usar_dir }}"
+                            data-requiere-cliente-manual="{% if ped_req_manual %}1{% else %}0{% endif %}"
+                            >
+                        Crear pedido Ambar{% if is_prod %} [ESCRITURA]{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+                {% if candidatos|length == 1 and candidatos[0].discrepancias_criticas %}
+                <div class="text-warning aviso-negocio small mt-1">
+                    Atención: el cliente Ambar seleccionado tiene datos distintos al pedido. Revisar antes de crear pedido.
+                </div>
+                {% endif %}
+                {% if ped_req_manual and ped_show_action %}
+                <div class="text-warning aviso-negocio small mt-1">Selecciona primero el cliente Ambar correcto.</div>
+                {% elif not ped_show_action and ped_bloqueo %}
+                <div class="text-warning aviso-negocio small mt-1">Alta de pedido: {{ ped_bloqueo }}</div>
+                {% endif %}
+                {% if ped_show_action and read_only %}
+                <div class="text-warning aviso-negocio small mt-1">Alta de pedido bloqueada: modo solo lectura.</div>
+                {% endif %}
+            {% endif %}
+        </td>
+
+        <td class="text-end fw-600 small align-middle cell-main">{{ '%.2f'|format(p.total_con_iva) }} €</td>
+    </tr>
+    <tr id="stock-row-{{ p.id_pedido }}" class="stock-panel-row d-none">
+        <td colspan="12" class="p-0 border-0">
+            <div id="stock-panel-{{ p.id_pedido }}" class="stock-panel-container"></div>
+        </td>
+    </tr>
+    <tr id="validacion-cliente-row-{{ p.id_pedido }}" class="stock-panel-row d-none">
+        <td colspan="12" class="p-0 border-0">
+            <div id="validacion-cliente-panel-{{ p.id_pedido }}" class="stock-panel-container"></div>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+<div class="py-2 px-3 text-muted small border-top">
+    {{ pedidos|length }} pedido{{ 's' if pedidos|length != 1 else '' }} encontrado{{ 's' if pedidos|length != 1 else '' }}
+</div>
+{% endif %}

@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Vacaciones de {{ usuario.nombre }}{% endblock %}
+
+{% block content %}
+<!-- Encabezado con logo -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-demo.jpg') }}" alt="Logo demo" style="height: 55px;">
+</div>
+
+<!-- Título + selector de año -->
+<h2 class="mb-2 text-center">
+    Vacaciones y ausencias de {{ usuario.nombre }} ({{ year }})
+</h2>
+
+<div class="text-center mb-3">
+    <a class="btn btn-sm btn-outline-secondary"
+        href="{{ url_for('admin_ausencias_usuario', usuario_id=usuario.id, year=year-1, tipo=filtro_tipo) }}">
+        ◀ {{ year - 1 }}
+    </a>
+    <span class="mx-2 fw-bold">{{ year }}</span>
+    <a class="btn btn-sm btn-outline-secondary"
+        href="{{ url_for('admin_ausencias_usuario', usuario_id=usuario.id, year=year+1, tipo=filtro_tipo) }}">
+        {{ year + 1 }} ▶
+    </a>
+</div>
+
+<!-- Resumen -->
+<div class="container-fluid px-2 px-md-3 mb-4">
+    <div class="row g-3 justify-content-center">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-primary">{{ total_ausencias }}</div>
+                    <div class="text-muted small">Total registros</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 {{ 'text-danger' if saldo_disponible <= 0 else 'text-success' }}">
+                        {{ saldo_disponible }}
+                    </div>
+                    <div class="text-muted small">Vacaciones disponibles</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-warning">{{ saldo_solicitado }}</div>
+                    <div class="text-muted small">Vacaciones solicitadas</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-success">{{ saldo_utilizado }}</div>
+                    <div class="text-muted small">Vacaciones utilizadas</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-secondary">{{ total_no_vacaciones }}</div>
+                    <div class="text-muted small">Ausencias no vacacionales</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Desglose -->
+<div class="container-fluid px-2 px-md-3 mb-4">
+    <div class="row g-3 justify-content-center">
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-info">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-info">{{ total_enfermedad }}</div>
+                    <div class="text-muted small">Enfermedad</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-warning">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-warning">{{ total_asuntos_propios }}</div>
+                    <div class="text-muted small">Asuntos propios</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-danger">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-danger">{{ total_baja }}</div>
+                    <div class="text-muted small">Baja</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm h-100 border-start border-4 border-purple">
+                <div class="card-body text-center">
+                    <div class="fw-bold fs-4 text-purple">{{ total_medico }}</div>
+                    <div class="text-muted small">Médico</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Filtros -->
+<form method="GET" class="row g-3 align-items-end mb-4 px-2 px-md-3">
+    <input type="hidden" name="year" value="{{ year }}">
+
+    <div class="col-12 col-md-auto">
+        <label class="form-label">Tipo</label>
+        <select name="tipo" class="form-select">
+            <option value="" {% if not filtro_tipo %}selected{% endif %}>Todos</option>
+            <option value="Vacaciones" {% if filtro_tipo=='Vacaciones' %}selected{% endif %}>Vacaciones</option>
+            <option value="Enfermedad" {% if filtro_tipo=='Enfermedad' %}selected{% endif %}>Enfermedad</option>
+            <option value="Asuntos propios" {% if filtro_tipo=='Asuntos propios' %}selected{% endif %}>Asuntos propios
+            </option>
+            <option value="Baja" {% if filtro_tipo=='Baja' %}selected{% endif %}>Baja</option>
+            <option value="Medico" {% if filtro_tipo=='Medico' %}selected{% endif %}>Médico</option>
+        </select>
+    </div>
+
+    <div class="col-12 col-md-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{{ url_for('admin_ausencias_usuario', usuario_id=usuario.id, year=year) }}"
+            class="btn btn-secondary">Limpiar</a>
+    </div>
+</form>
+
+<!-- Vista tabla -->
+<div id="vista-tabla">
+    {% if ausencias %}
+
+    <div class="table-responsive d-none d-md-block px-2">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Observaciones</th>
+                    <th>Origen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in ausencias %}
+                <tr>
+                    <td class="text-center">
+                        {{ a.fecha }}
+
+                        {% if a.hora_desde %}
+                        <div class="small text-muted">
+                            🕒 {{ a.hora_desde.strftime('%H:%M') }} - {{ a.hora_hasta.strftime('%H:%M') }}
+                        </div>
+                        {% endif %}
+
+                    </td>
+
+                    <td class="text-center">
+                        {% if a.tipo == 'Vacaciones' %}
+                        <span class="badge bg-primary">{{ a.tipo }}</span>
+                        {% elif a.tipo == 'Enfermedad' %}
+                        <span class="badge bg-info text-dark">{{ a.tipo }}</span>
+                        {% elif a.tipo == 'Asuntos propios' %}
+                        <span class="badge bg-warning text-dark">{{ a.tipo }}</span>
+                        {% elif a.tipo == 'Baja' %}
+                        <span class="badge bg-danger">{{ a.tipo }}</span>
+                        {% elif a.tipo == 'Medico' %}
+                        <span class="badge bg-purple">{{ a.tipo }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ a.tipo }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ a.observaciones or '-' }}</td>
+
+                    <td class="text-center">
+                        {% if a.creado_por_admin %}
+                        <span class="badge bg-danger">🛠️ Admin</span>
+                        {% else %}
+                        <span class="text-muted">Empleado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-block d-md-none px-2">
+        {% for a in ausencias %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+
+                <p class="fw-bold mb-1">
+                    {{ a.fecha }}
+
+                    {% if a.hora_desde %}
+                    <br>
+                    <span class="small text-muted">
+                        🕒 {{ a.hora_desde.strftime('%H:%M') }} - {{ a.hora_hasta.strftime('%H:%M') }}
+                    </span>
+                    {% endif %}
+
+                </p>
+
+                <p class="mb-2">
+                    <strong>Tipo:</strong>
+
+                    {% if a.tipo == 'Vacaciones' %}
+                    <span class="badge bg-primary">{{ a.tipo }}</span>
+                    {% elif a.tipo == 'Enfermedad' %}
+                    <span class="badge bg-info text-dark">{{ a.tipo }}</span>
+                    {% elif a.tipo == 'Asuntos propios' %}
+                    <span class="badge bg-warning text-dark">{{ a.tipo }}</span>
+                    {% elif a.tipo == 'Baja' %}
+                    <span class="badge bg-danger">{{ a.tipo }}</span>
+                    {% elif a.tipo == 'Medico' %}
+                    <span class="badge bg-purple">{{ a.tipo }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ a.tipo }}</span>
+                    {% endif %}
+
+                </p>
+
+                {% if a.observaciones %}
+                <p class="mb-1"><strong>Observaciones:</strong> {{ a.observaciones }}</p>
+                {% else %}
+                <p class="mb-1 text-muted"><strong>Observaciones:</strong> -</p>
+                {% endif %}
+
+                <p class="mb-0">
+                    <strong>Origen:</strong>
+                    {% if a.creado_por_admin %}
+                    <span class="badge bg-danger">🛠️ Admin</span>
+                    {% else %}
+                    <span class="text-muted">Empleado</span>
+                    {% endif %}
+                </p>
+
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+
+    <div class="text-center text-muted py-4">
+        No hay ausencias registradas para este año{% if filtro_tipo %} con el tipo seleccionado{% endif %}.
+    </div>
+
+    {% endif %}
+</div>
+
+<!-- Botón volver -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-secondary">⬅️ Volver a usuarios</a>
+</div>
+
+{% endblock %}

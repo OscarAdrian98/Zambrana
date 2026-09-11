@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Crear fichaje{% endblock %}
+
+{% block content %}
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-demo.jpg') }}" alt="Logo demo" style="height: 55px;">
+</div>
+
+<h2 class="text-center my-4">➕ Crear nuevo fichaje</h2>
+
+<form method="POST" class="card p-4 shadow-sm mx-auto bg-light" style="max-width: 500px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label class="form-label">👤 Usuario:</label>
+        <select name="usuario_id" class="form-select" required>
+            {% for u in usuarios %}
+            <option value="{{ u.id }}" {% if usuario_id_preseleccionado == u.id %}selected{% endif %}>
+                {{ u.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">📅 Fecha:</label>
+        <input type="date" name="fecha" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">🕐 Entrada:</label>
+        <input type="time" name="entrada" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">🕔 Salida:</label>
+        <input type="time" name="salida" class="form-control" required>
+    </div>
+
+    <button type="submit" class="btn btn-success w-100">💾 Guardar fichaje</button>
+</form>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('admin_fichajes') }}" class="btn btn-secondary">⬅️ Volver</a>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Pedidos PrestaShop ↔ Ambar{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-3">
+    {% if warning_msg %}
+    <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ warning_msg }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Panel de filtros -->
+    <div class="card filter-card mb-3">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-funnel-fill text-accent"></i>
+            <span class="fw-600">Filtros de búsqueda</span>
+        </div>
+        <div class="card-body">
+            <form id="frmFiltros"
+                  hx-post="/pedidos/buscar"
+                  hx-target="#contentTabla"
+                  hx-swap="innerHTML"
+                  hx-indicator="#spinner-global">
+                <div class="row g-2 align-items-end filter-grid">
+
+                    <div class="col-auto filter-col-date">
+                        <label class="form-label label-sm">Fecha desde</label>
+                        <input type="date" name="fecha_desde" id="fecha_desde" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto filter-col-date">
+                        <label class="form-label label-sm">Hasta</label>
+                        <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-auto filter-col-icon">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setHoy()" title="Establecer hoy">
+                            <i class="bi bi-calendar-check"></i>
+                        </button>
+                    </div>
+
+                    <div class="col-auto filter-col-id">
+                        <label class="form-label label-sm">ID Pedido</label>
+                        <div class="d-flex gap-1">
+                            <input type="text" name="id_pedido" id="id_pedido" class="form-control form-control-sm input-id-pedido" placeholder="ID">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addIdPedido()" title="Añadir otro ID">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                        <div id="divIDAdd" class="mt-1"></div>
+                    </div>
+
+                    <div class="col-auto filter-col-ultimos">
+                        <label class="form-label label-sm">Últimos N</label>
+                        <input type="text" name="ultimos_n" id="ultimos_n" class="form-control form-control-sm input-ultimos" placeholder="N">
+                    </div>
+
+                    <div class="col-auto filter-col-pago">
+                        <label class="form-label label-sm">Modo de pago</label>
+                        <select multiple name="modos_pago[]" id="modos_pago" class="form-select form-select-sm select-pagos">
+                            {% for modo in modos_pago %}
+                            <option value="{{ modo }}">{{ modo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-auto filter-col-estado">
+                        <label class="form-label label-sm">Estado PrestaShop</label>
+                        <select multiple name="estados_pedido[]" id="estados_pedido" class="form-select form-select-sm select-estados">
+                            {% for st in estados_pedido %}
+                            <option value="{{ st.id_order_state }}">{{ st.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-auto filter-col-estado-interno">
+                        <label class="form-label label-sm label-internal-state-filter">Estado interno</label>
+                        <select multiple name="estados_internos[]" id="estados_internos" class="form-select form-select-sm select-estados-internos">
+                            {% for st in estados_internos %}
+                            <option value="{{ st.id_internal_state }}">{{ st.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-auto filter-col-dir">
+                        <label class="form-label label-sm">Dir. a usar</label>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="usar_direccion" id="radioFactura" value="Factura" checked>
+                            <label class="btn btn-outline-primary" for="radioFactura">Factura</label>
+                            <input type="radio" class="btn-check" name="usar_direccion" id="radioEnvio" value="Envio">
+                            <label class="btn btn-outline-primary" for="radioEnvio">Envío</label>
+                        </div>
+                    </div>
+
+                    <div class="col-auto filter-col-hora">
+                        <label class="form-label label-sm">Hora fin día</label>
+                        <input type="time" name="hora_fin_dia" id="hora_fin_dia" class="form-control form-control-sm" value="23:00">
+                    </div>
+
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-2 pt-2 border-top filter-actions">
+                    <button type="submit" class="btn btn-success btn-sm fw-600">
+                        <i class="bi bi-search me-1"></i>Mostrar Pedidos
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetFiltros()">
+                        <i class="bi bi-eraser me-1"></i>Borrar Filtros
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i>Imprimir
+                    </button>
+                </div>
+
+                <div class="d-flex flex-wrap gap-3 mt-2 pt-2 border-top new-orders-controls">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chk_pedidos_nuevos" checked>
+                        <label class="form-check-label label-sm mb-0" for="chk_pedidos_nuevos">Comprobar pedidos nuevos</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chk_pedidos_nuevos_sonido" checked>
+                        <label class="form-check-label label-sm mb-0" for="chk_pedidos_nuevos_sonido">Sonido</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chk_pedidos_nuevos_autorefresh">
+                        <label class="form-check-label label-sm mb-0" for="chk_pedidos_nuevos_autorefresh">Refrescar tabla automáticamente</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="new-orders-banner"
+         class="alert alert-info d-none align-items-center justify-content-between gap-3 new-orders-banner"
+         data-initial-last-id="{{ initial_last_id or 0 }}"
+         role="alert">
+        <div id="new-orders-banner-text" class="small fw-600">Hay pedidos nuevos disponibles.</div>
+        <button type="button" id="btn-refresh-new-orders" class="btn btn-sm btn-outline-info">
+            Actualizar listado
+        </button>
+    </div>
+
+    <div id="contentTabla"></div>
+
+</div>
+
+<div class="modal fade" id="modalEmailPedido" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content modal-email-pedido-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enviar email al cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body modal-email-pedido-body">
+                <input type="hidden" id="emailPedidoIdPedido">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                        <label class="form-label label-sm">Pedido</label>
+                        <input type="text" class="form-control form-control-sm email-modal-field email-modal-readonly" id="emailPedidoPedidoInfo" readonly>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label label-sm">Cliente</label>
+                        <input type="text" class="form-control form-control-sm email-modal-field email-modal-readonly" id="emailPedidoClienteInfo" readonly>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label label-sm">Email destino</label>
+                    <input type="email" class="form-control form-control-sm email-modal-field email-modal-readonly" id="emailPedidoTo" readonly>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label label-sm">Asunto</label>
+                    <input type="text" class="form-control form-control-sm email-modal-field" id="emailPedidoSubject" maxlength="200">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label label-sm">Cuerpo</label>
+                    <textarea class="form-control form-control-sm email-modal-field email-modal-textarea" id="emailPedidoBody" rows="8"></textarea>
+                </div>
+                <div id="emailPedidoStatus" class="small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-email-cancelar" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-email-enviar" id="btnEnviarEmailPedido">
+                    <span class="btn-label">Enviar correo</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

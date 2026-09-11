@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ subject }}</title>
+</head>
+<body style="margin:0; padding:0; background:#f4f4f5; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f4f5; padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px; background:#ffffff; border-radius:8px; overflow:hidden; border:1px solid #e5e7eb;">
+          <tr>
+            <td style="height:6px; background:#b91c1c; font-size:0; line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:18px 20px 10px 20px;">
+              <a href="{{ site_url }}" target="_blank" style="text-decoration:none; display:inline-block;">
+                <img src="{{ logo_url }}" alt="MX demo" width="220" style="max-width:220px; width:100%; height:auto; border:0; display:block;">
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 24px 6px 24px; text-align:center;">
+              <h1 style="margin:0; font-size:24px; line-height:1.2; color:#111827;">Información sobre tu pedido</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 24px 10px 24px; font-size:15px; line-height:1.6; color:#1f2937;">
+              <p style="margin:0 0 12px 0;">Hola {{ customer_name }},</p>
+              <p style="margin:0;">{{ body_html | safe }}</p>
+            </td>
+          </tr>
+
+          {% if id_pedido or referencia or fecha_pedido or total_pedido %}
+          <tr>
+            <td style="padding:12px 24px 0 24px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #e5e7eb; border-radius:6px; background:#fafafa;">
+                <tr>
+                  <td style="padding:12px 14px;">
+                    <div style="font-size:14px; font-weight:700; color:#111827; margin-bottom:8px;">Resumen del pedido</div>
+                    {% if id_pedido %}<div style="font-size:14px; color:#374151; margin-bottom:4px;"><strong>Pedido:</strong> #{{ id_pedido }}</div>{% endif %}
+                    {% if referencia %}<div style="font-size:14px; color:#374151; margin-bottom:4px;"><strong>Referencia:</strong> {{ referencia }}</div>{% endif %}
+                    {% if fecha_pedido %}<div style="font-size:14px; color:#374151; margin-bottom:4px;"><strong>Fecha:</strong> {{ fecha_pedido }}</div>{% endif %}
+                    {% if total_pedido %}<div style="font-size:14px; color:#374151;"><strong>Total:</strong> {{ total_pedido }}</div>{% endif %}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {% endif %}
+
+          {% if products %}
+          <tr>
+            <td style="padding:14px 24px 0 24px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #e5e7eb; border-radius:6px; background:#ffffff;">
+                <tr>
+                  <td style="padding:12px 14px 6px 14px;">
+                    <div style="font-size:14px; font-weight:700; color:#111827;">Productos de tu pedido</div>
+                  </td>
+                </tr>
+                {% for p in products %}
+                <tr>
+                  <td style="padding:8px 14px; border-top:1px solid #f0f2f5;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td valign="top" width="72" style="width:72px; padding-right:10px;">
+                          {% if p.image_url %}
+                          <img src="{{ p.image_url }}" alt="{{ p.name }}" width="60" height="60" style="display:block; width:60px; height:60px; border:1px solid #e5e7eb; border-radius:4px; object-fit:cover;">
+                          {% else %}
+                          <div style="width:60px; height:60px; border:1px solid #e5e7eb; border-radius:4px; background:#f9fafb; color:#9ca3af; font-size:11px; line-height:60px; text-align:center;">Sin imagen</div>
+                          {% endif %}
+                        </td>
+                        <td valign="top" style="font-size:13px; color:#374151; line-height:1.45;">
+                          <div style="font-size:14px; font-weight:700; color:#111827; margin-bottom:3px;">{{ p.name }}</div>
+                          {% if p.reference %}<div style="margin-bottom:2px;"><strong>Referencia:</strong> {{ p.reference }}</div>{% endif %}
+                          <div style="margin-bottom:2px;"><strong>Cantidad:</strong> {{ p.quantity }}</div>
+                          {% if p.unit_price %}<div style="margin-bottom:2px;"><strong>Precio:</strong> {{ p.unit_price }}</div>{% endif %}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                {% endfor %}
+                {% if products_extra_count > 0 %}
+                <tr>
+                  <td style="padding:10px 14px 12px 14px; border-top:1px solid #f0f2f5; font-size:13px; color:#6b7280;">
+                    Y {{ products_extra_count }} producto(s) más en tu pedido.
+                  </td>
+                </tr>
+                {% endif %}
+              </table>
+            </td>
+          </tr>
+          {% endif %}
+
+          <tr>
+            <td align="center" style="padding:18px 24px 10px 24px;">
+              <a href="{{ site_url }}" target="_blank" style="display:inline-block; background:#b91c1c; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:11px 18px; border-radius:6px;">
+                Visitar {{ company_name }}
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:12px 24px 24px 24px; font-size:13px; line-height:1.6; color:#6b7280; text-align:center;">
+              <div style="margin-bottom:4px;">Este mensaje ha sido enviado por el equipo de {{ company_name }}.</div>
+              <div>Para cualquier consulta, puedes responder a este correo o escribir a <a href="mailto:{{ support_email }}" style="color:#b91c1c; text-decoration:none;">{{ support_email }}</a>.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

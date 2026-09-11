@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<!-- Logo en encabezado -->
+<div class="bg-white text-center py-2 border-bottom shadow-sm">
+    <img src="{{ url_for('static', filename='logo-demo.jpg') }}" alt="Logo demo" style="height: 55px;">
+</div>
+
+<!-- Saludo y fecha -->
+<div class="text-center mt-3">
+    <h4 class="fw-bold">¡Hola, {{ current_user.nombre }}!</h4>
+    <p class="text-muted">
+        {{ today.strftime('%A, %d de %B de %Y')
+            | replace('Monday', 'lunes') | replace('Tuesday', 'martes') | replace('Wednesday', 'miércoles')
+            | replace('Thursday', 'jueves') | replace('Friday', 'viernes') | replace('Saturday', 'sábado')
+            | replace('Sunday', 'domingo') | replace('January', 'enero') | replace('February', 'febrero')
+            | replace('March', 'marzo') | replace('April', 'abril') | replace('May', 'mayo')
+            | replace('June', 'junio') | replace('July', 'julio') | replace('August', 'agosto')
+            | replace('September', 'septiembre') | replace('October', 'octubre') | replace('November', 'noviembre')
+            | replace('December', 'diciembre') }}
+    </p>
+</div>
+
+<!-- Hora actual -->
+<div class="card shadow-sm text-center mb-3 mx-auto" style="max-width: 400px;">
+    <div class="card-body">
+        <h1 id="reloj" class="display-4 text-danger fw-bold">--:--:--</h1>
+        <p class="text-muted mb-0">Hora actual</p>
+    </div>
+</div>
+
+<!-- Incidencia si existen varias jornadas activas -->
+{% if incidencia_fichajes_multiples %}
+<div class="alert alert-warning text-center mx-auto mb-3" style="max-width: 400px;" role="alert">
+    <strong>Incidencia en el fichaje de hoy.</strong><br>
+    No se puede determinar tu estado horario porque existen varias jornadas activas.
+    Contacta con administración.
+</div>
+{% endif %}
+
+<!-- Aviso si el usuario está ausente hoy -->
+{% if ausencia_hoy %}
+<div class="alert alert-danger text-center mx-auto mb-3" style="max-width: 400px;">
+    Hoy tienes una ausencia registrada: <strong>{{ ausencia_hoy.tipo }}</strong><br>
+    {% if ausencia_hoy.observaciones %}
+        <small class="text-muted">({{ ausencia_hoy.observaciones }})</small>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- 🔔 Aviso si es sábado asignado -->
+{% if es_sabado and sabado_asignado %}
+<div class="alert alert-warning text-center mx-auto mb-3" style="max-width: 400px;">
+    Hoy es <strong>sábado</strong> y estás asignado para trabajar.<br>
+    No olvides fichar.
+</div>
+{% endif %}
+
+<!-- Estado y botones -->
+<div class="card shadow-sm text-center mb-3 mx-auto" style="max-width: 400px;">
+    <div class="card-body">
+        {% if incidencia_fichajes_multiples %}
+            <p class="text-warning fw-bold mb-3">Incidencia pendiente de revisión</p>
+        {% elif estado == 'Dentro' %}
+            <p class="text-success fw-bold mb-3">
+                🟢 Dentro del trabajo
+            </p>
+        {% else %}
+            <p class="text-danger fw-bold mb-3">🔴 Fuera del trabajo</p>
+        {% endif %}
+
+        {% if accion_disponible == 'entrada' %}
+        <form method="POST" action="{{ url_for('fichar_registro') }}" id="form_entrada">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="tipo" value="entrada">
+            <div class="mb-2">
+                <label for="origen_entrada" class="form-label text-start d-block">
+                    Origen
+                </label>
+                <select id="origen_entrada" name="origen" class="form-select" required>
+                    <option value="Tienda">Tienda</option>
+                    <option value="Remoto">Remoto</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg w-100">
+                🟢 Fichar entrada
+            </button>
+        </form>
+        {% elif accion_disponible == 'salida' %}
+        <p class="text-muted mb-2" id="origen-tramo-abierto">
+            <strong>Origen: {{ origen_tramo_abierto }}</strong>
+        </p>
+        <form method="POST" action="{{ url_for('fichar_registro') }}" id="form_salida">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="tipo" value="salida">
+            <button type="submit" class="btn btn-danger btn-lg w-100">
+                🔴 Fichar salida
+            </button>
+        </form>
+        {% else %}
+        <p class="text-muted mb-0" id="sin-accion-fichaje">
+            No hay ninguna acción de fichaje disponible.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resumen de hoy -->
+<div class="card shadow-sm text-center mx-auto mb-5" style="max-width: 400px;">
+    <div class="card-body">
+        <h5 class="mb-2">Resumen de hoy</h5>
+        <p class="fs-4 fw-bold text-primary" id="contador-trabajo">{{ total_cerrado_hhmm }}</p>
+        <p class="text-muted mb-0">Horas trabajadas</p>
+    </div>
+</div>
+
+<!-- Scripts: reloj, contador, sincronización, notificación -->
+<script>
+function actualizarReloj() {
+    const ahora = new Date();
+    const horas = ahora.getHours().toString().padStart(2, '0');
+    const minutos = ahora.getMinutes().toString().padStart(2, '0');
+    const segundos = ahora.getSeconds().toString().padStart(2, '0');
+    document.getElementById('reloj').textContent = `${horas}:${minutos}:${segundos}`;
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const contador = document.getElementById("contador-trabajo");
+    const totalCerradoSegundos = {{ total_cerrado_segundos }};
+
+    {% if ultima_entrada_str %}
+        const inicio = new Date("{{ ultima_entrada_str }}");
+        setInterval(() => {
+            const ahora = new Date();
+            const segundosTramoAbierto = Math.max(0, Math.floor((ahora - inicio) / 1000));
+            const totalSegundos = totalCerradoSegundos + segundosTramoAbierto;
+            const h = Math.floor(totalSegundos / 3600).toString().padStart(2, '0');
+            const m = Math.floor((totalSegundos % 3600) / 60).toString().padStart(2, '0');
+            contador.textContent = `${h}:${m}`;
+        }, 1000);
+    {% endif %}
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    const ahora = new Date();
+    const dia = ahora.getDay();
+    const mes = ahora.getMonth();
+    const hora = ahora.getHours();
+    const minutos = ahora.getMinutes();
+
+    const esLaboral = dia >= 1 && dia <= 5;
+    const esAgosto = mes === 7;
+
+    let franjaValida = false;
+    if (!esAgosto && esLaboral) {
+        franjaValida = (hora === 10 && minutos >= 20 && minutos <= 25) || (hora === 16 && minutos >= 20 && minutos <= 25);
+    } else if (esAgosto && esLaboral) {
+        franjaValida = (hora === 10 && minutos >= 20 && minutos <= 25);
+    }
+
+    if (franjaValida && Notification.permission === "granted") {
+        fetch("/api/debo_fichar")
+            .then(res => res.json())
+            .then(data => {
+                if (data.debo_fichar) {
+                    new Notification("🔔 Recuerda fichar", {
+                        body: "No has fichado en esta franja horaria.",
+                        icon: "/static/logo-demo.jpg"
+                    });
+                }
+            });
+    }
+});
+</script>
+
+<!-- Menú inferior -->
+<nav class="navbar fixed-bottom bg-white border-top d-flex justify-content-around py-2">
+    <a href="{{ url_for('fichar') }}" class="text-center {% if request.path == '/fichar' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-house-door-fill"></i></div>
+        <div style="font-size: 0.9rem;">Inicio</div>
+    </a>
+    <a href="{{ url_for('control_horario') }}" class="text-center {% if request.path == '/control-horario' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-clock-history"></i></div>
+        <div style="font-size: 0.9rem;">Horarios</div>
+    </a>
+    <a href="{{ url_for('resumen') }}" class="text-center {% if request.path == '/resumen' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar3"></i></div>
+        <div style="font-size: 0.9rem;">Calendario</div>
+    </a>
+    <a href="{{ url_for('mis_ausencias') }}" class="text-center {% if request.path == '/mis-ausencias' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-calendar-check"></i></div>
+        <div style="font-size: 0.9rem;">Vacaciones</div>
+    </a>
+    <a href="{{ url_for('perfil') }}" class="text-center {% if request.path == '/perfil' %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-person-circle"></i></div>
+        <div style="font-size: 0.9rem;">Perfil</div>
+    </a>
+    {% if current_user.admin %}
+    <a href="{{ url_for('admin_fichajes') }}" class="text-center {% if '/admin' in request.path %}text-primary fw-bold{% endif %}">
+        <div><i class="bi bi-tools"></i></div>
+        <div style="font-size: 0.9rem;">Admin</div>
+    </a>
+    {% endif %}
+</nav>
+{% endblock %}
