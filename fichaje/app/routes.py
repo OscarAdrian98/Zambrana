@@ -572,7 +572,12 @@ def exportar_excel():
         )
 
     output.seek(0)
-    return send_file(output, download_name=filename, as_attachment=True)
+    return send_file(
+        output,
+        download_name=filename,
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/registro", methods=["GET", "POST"])
@@ -707,7 +712,12 @@ def exportar_mis_fichajes():
         )
 
     output.seek(0)
-    return send_file(output, download_name=filename, as_attachment=True)
+    return send_file(
+        output,
+        download_name=filename,
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/admin/fichajes/<int:usuario_id>")
