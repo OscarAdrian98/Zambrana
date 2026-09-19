@@ -26,7 +26,7 @@ Se revisan todos los archivos publicables con tools/check_repository.py: artefac
 
 Además del escáner publicable, se realizó una comparación privada contra 13 valores sensibles conocidos, sin imprimirlos ni guardarlos en el repositorio. No se encontraron coincidencias. Esta comparación no es una afirmación de exhaustividad sobre secretos desconocidos.
 
-Las imágenes seleccionadas del configurador son recursos funcionales, no ejecutables ni datos de pedidos. Su autorización de redistribución sigue pendiente según NOTICE.
+Las imágenes seleccionadas del configurador son recursos funcionales, no ejecutables ni datos de pedidos. Su publicación como parte de este repositorio está confirmada.
 
 ## Reproducción
 

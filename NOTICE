@@ -11,9 +11,8 @@ Las dependencias conservan sus propias licencias y no se redistribuyen en forma
 de entornos virtuales o ejecutables.
 
 Las imágenes de mxz_ruedas/img son recursos funcionales del configurador y se
-conservan separadas de los datos operativos. Su procedencia y permiso de
-redistribución requieren confirmación del propietario. No se atribuye a esos
-recursos una licencia libre que no haya sido verificada.
+conservan separadas de los datos operativos. Los recursos gráficos incluidos
+pueden distribuirse como parte de este repositorio.
 
 No se distribuyen logotipos de la instalación de facturación, datos empresariales,
 licencias de producto ni documentos fiscales reales.
