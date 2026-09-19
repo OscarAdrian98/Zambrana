@@ -24,7 +24,3 @@ Describir el componente, las condiciones de reproducción y el impacto utilizand
 Configurar autenticación, autorización, TLS, orígenes CORS, límites de carga y permisos de bases antes de cualquier exposición. Las aplicaciones que no incorporan autenticación completa deben permanecer detrás de un control de acceso externo.
 
 Stock --report-only puede escribir en almacenamiento de proveedores. Fichaje tiene tareas con efectos de negocio. Factura puede producir documentos y remesas. Ninguno de esos flujos se utiliza como prueba contra sistemas reales en CI.
-
-## Historial
-
-Los ancestros anteriores a la reconstrucción contienen material sensible. No publicar la rama de trabajo ni sus tags por comodidad. Revisar docs/history-cleanup.md y publicar únicamente una historia saneada después de rotar credenciales.

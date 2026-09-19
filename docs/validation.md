@@ -52,7 +52,7 @@ El segundo requiere php y node en PATH; permite --php y --node para rutas explí
 
 El workflow comprueba árbol y sintaxis en Ubuntu; las cuatro suites se ejecutan en Windows con Python 3.11 y cierres independientes. No utiliza secretos del proyecto ni inicia integraciones.
 
-Se han ejecutado localmente sus comandos equivalentes. **GitHub Actions no se ha ejecutado**, porque no se ha hecho push.
+Se han ejecutado localmente sus comandos equivalentes. La [ejecución 2 de `Portfolio checks`](https://github.com/OscarAdrian98/Zambrana/actions/runs/34685671922) finalizó correctamente en GitHub Actions el 12 de septiembre de 2026 sobre `main`, para el commit `961dc36a2862e117900b6fe221a0ecf46075e379`.
 
 ## Límites de la validación
 

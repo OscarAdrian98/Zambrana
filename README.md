@@ -47,4 +47,4 @@ Las pruebas bloquean conexiones de red y usan SQLite en memoria, datos sintétic
 
 [Política de seguridad](SECURITY.md) · [Contexto de derechos y recursos](NOTICE)
 
-Este árbol saneado no implica que los ancestros Git sean seguros. El procedimiento de publicación y retirada del historial anterior se mantiene separado en [la guía de historial](docs/history-cleanup.md).
+El repositorio fue saneado antes de su publicación; los secretos, configuraciones privadas y datos operativos se mantienen fuera del control de versiones.
